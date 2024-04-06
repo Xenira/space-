@@ -15,8 +15,11 @@ pub(crate) struct DialogLobbyJoinPlugin;
 impl Plugin for DialogLobbyJoinPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<LobbyJoin>()
-            .add_systems((ui_lobby_join_dialog, on_join).in_set(OnUpdate(STATE)))
-            .add_system(cleanup_system::<Cleanup>.in_schedule(OnExit(STATE)));
+            .add_systems(
+                Update,
+                (ui_lobby_join_dialog, on_join).run_if(in_state(STATE)),
+            )
+            .add_systems(OnExit(STATE), cleanup_system::<Cleanup>);
     }
 }
 

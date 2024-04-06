@@ -1,0 +1,3 @@
+style of Anato Finnstark, iridescent, messy, streaks, icon, game, spell, blessing of strength
+Negative prompt: ugly, bad artist, text, watermark
+Steps: 70, Sampler: DPM++ 2M SDE Karras, CFG scale: 7, Seed: 838400921, Size: 512x512, Model hash: b76cc78ad9, Model: dreamshaper_6BakedVae, Version: v1.5.0

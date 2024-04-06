@@ -148,7 +148,7 @@ pub async fn sell_character(user: &User, game: GameGuard, character_idx: usize) 
         ))
     };
 
-    if game_user.sell(character_idx).is_ok() {
+    if game_user.sell_character(character_idx).is_ok() {
         Json(Protocol::SellResponse(
             GameUserInfo {
                 experience: game_user.experience,

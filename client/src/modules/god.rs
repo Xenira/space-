@@ -14,8 +14,10 @@ pub(crate) struct GodPlugin;
 
 impl Plugin for GodPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(on_spawn)
-            .add_system(on_god_hover.in_set(ChangeDetectionSystemSet::Tooltip));
+        app.add_systems(Update, on_spawn).add_systems(
+            Update,
+            on_god_hover.in_set(ChangeDetectionSystemSet::Tooltip),
+        );
     }
 }
 
@@ -77,9 +79,8 @@ fn spawn_god_portrait(
         },))
         .with_children(|parent| {
             // God Portrait
-            parent.spawn(SpriteSheetBundle {
-                texture_atlas: god_assets.god_portraits.get(&character_id).unwrap().clone(),
-                sprite: TextureAtlasSprite::new(0),
+            parent.spawn(SpriteBundle {
+                texture: god_assets.god_portraits.get(&character_id).unwrap().clone(),
                 transform: Transform::from_translation(Vec3::new(0.0, 0.0, -1.0))
                     .with_scale(Vec3::splat(0.25)),
                 ..Default::default()

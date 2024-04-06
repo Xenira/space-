@@ -8,8 +8,8 @@ pub(crate) struct BackgroundPlugin;
 impl Plugin for BackgroundPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<Background>()
-            .add_startup_system(setup)
-            .add_systems((on_background_change, on_window_resize));
+            .add_systems(Startup, setup)
+            .add_systems(Update, (on_background_change, on_window_resize));
     }
 }
 

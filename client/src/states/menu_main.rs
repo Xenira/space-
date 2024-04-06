@@ -8,8 +8,8 @@ pub(crate) struct MenuMainPlugin;
 
 impl Plugin for MenuMainPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(ui_main_menu.in_set(OnUpdate(STATE)))
-            .add_system(cleanup_system::<Cleanup>.in_schedule(OnExit(STATE)));
+        app.add_systems(Update, ui_main_menu.run_if(in_state(STATE)))
+            .add_systems(OnExit(STATE), cleanup_system::<Cleanup>);
     }
 }
 

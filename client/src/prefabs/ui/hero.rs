@@ -9,7 +9,6 @@ pub struct HeroSelectionChoiceBundle {
     pub hoverable: Hoverable,
     pub bounding_box: BoundingBox,
 
-    #[bundle]
     pub animation_bundle: AnimationBundle,
 }
 

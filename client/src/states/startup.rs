@@ -1,6 +1,6 @@
 use crate::{components::background::Background, AppState, StateChangeEvent};
 use bevy::{prelude::*, utils::HashMap};
-use protocol::{characters::get_characters, gods::get_gods};
+use protocol::{characters::get_characters, gods::get_gods, spells::get_spells};
 
 const STATE: AppState = AppState::Startup;
 pub(crate) struct StartupPlugin;
@@ -11,17 +11,19 @@ impl Plugin for StartupPlugin {
             .init_resource::<GodAssets>()
             .init_resource::<CharacterAssets>()
             .init_resource::<BackgroundAssets>()
+            .init_resource::<SpellAssets>()
             .add_systems(
+                OnEnter(STATE),
                 (
                     load_ui_assets,
                     load_gods_assets,
                     load_character_assets,
                     load_background_assets,
+                    load_spell_assets,
                 )
-                    .before(setup)
-                    .in_schedule(OnEnter(STATE)),
+                    .before(setup),
             )
-            .add_system(setup.in_schedule(OnEnter(STATE)));
+            .add_systems(OnEnter(STATE), setup);
     }
 }
 
@@ -33,14 +35,14 @@ pub struct UiAssets {
 
 #[derive(Resource, Default)]
 pub struct GodAssets {
-    pub(crate) god_portraits: HashMap<i32, Handle<TextureAtlas>>,
+    pub(crate) god_portraits: HashMap<i32, Handle<Image>>,
     pub god_frame: Handle<TextureAtlas>,
     pub lvl_orb: Handle<Image>,
 }
 
 #[derive(Resource, Default)]
 pub struct CharacterAssets {
-    pub(crate) character_portraits: HashMap<i32, Handle<TextureAtlas>>,
+    pub(crate) character_portraits: HashMap<i32, Handle<Image>>,
     pub character_frame: Handle<Image>,
     pub health_orb: Handle<Image>,
     pub attack_orb: Handle<Image>,
@@ -48,6 +50,12 @@ pub struct CharacterAssets {
     pub upgrded: Handle<TextureAtlas>,
     pub upgradable: Handle<TextureAtlas>,
     pub duplicate: Handle<TextureAtlas>,
+}
+
+#[derive(Resource, Default)]
+pub struct SpellAssets {
+    pub(crate) spell_portraits: HashMap<i32, Handle<Image>>,
+    pub spell_frame: Handle<Image>,
 }
 
 #[derive(Resource, Default)]
@@ -66,12 +74,10 @@ fn load_gods_assets(
     mut god_assets: ResMut<GodAssets>,
 ) {
     for god in get_gods().iter() {
-        let god_handle = asset_server.load(format!("generated/gods/{}.png", god.id));
-        let god_atlas =
-            TextureAtlas::from_grid(god_handle, Vec2::new(256.0, 256.0), 1, 1, None, None);
-        god_assets
-            .god_portraits
-            .insert(god.id, texture_atlases.add(god_atlas));
+        god_assets.god_portraits.insert(
+            god.id,
+            asset_server.load(format!("generated/gods/{}.png", god.id)),
+        );
     }
 
     let god_frame = asset_server.load("textures/ui/god_frame2.png");
@@ -88,14 +94,10 @@ fn load_character_assets(
     mut character_assets: ResMut<CharacterAssets>,
 ) {
     for character in get_characters().iter() {
-        let character_handle =
-            asset_server.load(format!("generated/characters/{}.png", character.id));
-        let character_atlas =
-            TextureAtlas::from_grid(character_handle, Vec2::new(512.0, 512.0), 1, 1, None, None);
-
-        character_assets
-            .character_portraits
-            .insert(character.id, texture_atlases.add(character_atlas));
+        character_assets.character_portraits.insert(
+            character.id,
+            asset_server.load(format!("generated/characters/{}.png", character.id)),
+        );
     }
 
     character_assets.character_frame = asset_server.load("textures/ui/character_frame.png");
@@ -116,6 +118,17 @@ fn load_character_assets(
     let duplicate_atlas =
         TextureAtlas::from_grid(duplicate, Vec2::new(265.0, 265.0), 6, 5, None, None);
     character_assets.duplicate = texture_atlases.add(duplicate_atlas);
+}
+
+fn load_spell_assets(asset_server: Res<AssetServer>, mut spell_assets: ResMut<SpellAssets>) {
+    for spell in get_spells().iter() {
+        spell_assets.spell_portraits.insert(
+            spell.id,
+            asset_server.load(format!("generated/spells/{}.png", spell.id)),
+        );
+    }
+
+    spell_assets.spell_frame = asset_server.load("textures/ui/character_frame.png");
 }
 
 fn load_background_assets(

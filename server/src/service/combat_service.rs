@@ -446,21 +446,25 @@ fn apply_ability(
     }
 }
 
-fn calculate_ammount(value: &AbilityValue, entry: &AbilityStackEntry) -> i32 {
-    match value {
-        AbilityValue::Plain(value) => *value,
-        AbilityValue::PercentHealth(value) => {
-            (entry.target.borrow().get_total_health() as f32 / 100.0 * *value as f32) as i32
+fn calculate_ammount(value: &Option<AbilityValue>, entry: &AbilityStackEntry) -> i32 {
+    if let Some(value) = value {
+        match value {
+            AbilityValue::Plain(value) => *value,
+            AbilityValue::PercentHealth(value) => {
+                (entry.target.borrow().get_total_health() as f32 / 100.0 * *value as f32) as i32
+            }
+            AbilityValue::PercentAttack(value) => {
+                (entry.target.borrow().get_total_attack() as f32 / 100.0 * *value as f32) as i32
+            }
+            AbilityValue::PercentMaxHealth(_) => todo!(),
+            AbilityValue::PercentMaxAttack(_) => todo!(),
+            AbilityValue::PercentTargetHealth(_) => todo!(),
+            AbilityValue::PercentTargetAttack(_) => todo!(),
+            AbilityValue::PercentTargetMaxHealth(_) => todo!(),
+            AbilityValue::PercentTargetMaxAttack(_) => todo!(),
         }
-        AbilityValue::PercentAttack(value) => {
-            (entry.target.borrow().get_total_attack() as f32 / 100.0 * *value as f32) as i32
-        }
-        AbilityValue::PercentMaxHealth(_) => todo!(),
-        AbilityValue::PercentMaxAttack(_) => todo!(),
-        AbilityValue::PercentTargetHealth(_) => todo!(),
-        AbilityValue::PercentTargetAttack(_) => todo!(),
-        AbilityValue::PercentTargetMaxHealth(_) => todo!(),
-        AbilityValue::PercentTargetMaxAttack(_) => todo!(),
+    } else {
+        0
     }
 }
 

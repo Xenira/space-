@@ -1,9 +1,16 @@
+use crate::game::MAX_SPELLS;
+
 use super::{shop::Shop, BOARD_SIZE, EXP_PER_LVL, MAX_LVL, START_EXP, START_HEALTH, START_MONEY};
 use protocol::{
     characters::get_characters,
     protocol::{CharacterInstance, GameOpponentInfo},
-    protocol_types::prelude::God,
+    protocol_types::{
+        prelude::{Ability, AbilityEffect, AbilityTarget, AbilityTrigger, AbilityValue, God},
+        spell::Spell,
+    },
 };
+use rand::seq::IteratorRandom;
+use rocket::log::private::debug;
 use uuid::Uuid;
 
 #[derive(Debug, Clone)]
@@ -12,6 +19,7 @@ pub struct GameInstancePlayer {
     pub user_id: Option<i32>,
     pub display_name: String,
     pub board: [Option<CharacterInstance>; BOARD_SIZE],
+    pub spells: Vec<Spell>,
     pub god: Option<God>,
     pub god_choices: [i32; 4],
     pub shop: Shop,
@@ -28,6 +36,7 @@ impl std::default::Default for GameInstancePlayer {
             user_id: None,
             display_name: String::new(),
             board: Default::default(),
+            spells: Default::default(),
             god: None,
             god_choices: Default::default(),
             shop: Default::default(),
@@ -74,7 +83,7 @@ impl GameInstancePlayer {
         Ok(())
     }
 
-    pub fn buy(&mut self, shop_idx: usize, board_idx: usize) -> Result<(), ()> {
+    pub fn buy_character(&mut self, shop_idx: usize, board_idx: usize) -> Result<(), ()> {
         let Some(shop_character) = self.shop.characters.get(shop_idx) else {
             // Invalid shop index
             return Err(());
@@ -127,7 +136,84 @@ impl GameInstancePlayer {
         Ok(())
     }
 
-    pub fn sell(&mut self, character_idx: usize) -> Result<(), ()> {
+    pub fn buy_spell(&mut self, shop_idx: usize, target_idx: Option<usize>) -> Result<(), ()> {
+        if self.spells.len() >= MAX_SPELLS {
+            // Max amount of spells already casted
+            debug!("Max amount of spells already casted");
+            return Err(());
+        }
+
+        let Some(shop_spell) = self.shop.spells.get(shop_idx) else {
+            // Invalid shop index
+            debug!("Invalid shop index");
+            return Err(());
+        };
+
+        let Some(shop_spell) = shop_spell.clone() else {
+            // Spell is not in shop
+            debug!("Spell is not in shop");
+            return Err(());
+        };
+
+        let cost = shop_spell.cost as u16;
+        if self.money < cost {
+            // Not enough money
+            debug!("Not enough money");
+            return Err(());
+        };
+
+        let target = if shop_spell
+            .abilities
+            .iter()
+            .any(|a| a.target == AbilityTarget::AllyTarget)
+        {
+            if let Some(target_idx) = target_idx {
+                if target_idx >= self.board.len() {
+                    // Invalid board index
+                    debug!("Invalid board index");
+                    return Err(());
+                }
+
+                if self.board.get(target_idx).is_some() {
+                    Some(target_idx)
+                } else {
+                    // Board is empty at index
+                    debug!("Board is empty at index");
+                    return Err(());
+                }
+            } else {
+                // No target index provided
+                debug!("No target index provided");
+                return Err(());
+            }
+        } else {
+            // Spell does not require a target
+            debug!("Spell does not require a target");
+            None
+        };
+
+        self.money -= cost;
+        self.spells.push(shop_spell.clone());
+        *self.shop.spells.get_mut(shop_idx).unwrap() = None;
+
+        debug!("Casting spell: {:?}", shop_spell);
+
+        if let Some(Err(err)) = shop_spell
+            .abilities
+            .iter()
+            .filter(|a| a.trigger == AbilityTrigger::OnBuy)
+            .map(|a| self.cast_ability(a, target))
+            .next()
+        {
+            // Error casting ability
+            debug!("Error casting ability: {:?}", err);
+            return Err(err);
+        }
+
+        Ok(())
+    }
+
+    pub fn sell_character(&mut self, character_idx: usize) -> Result<(), ()> {
         if character_idx > self.board.len() {
             // Invalid board index
             return Err(());
@@ -225,5 +311,88 @@ impl GameInstancePlayer {
 
     pub(crate) fn is_active(&self) -> bool {
         self.health > 0 && self.placement.is_none()
+    }
+
+    fn cast_ability(&mut self, a: &Ability, target: Option<usize>) -> Result<(), ()> {
+        let targets = match a.target {
+            AbilityTarget::AllAllyTarget | AbilityTarget::AllTarget => self
+                .board
+                .iter_mut()
+                .filter_map(|c| c.as_mut())
+                .collect::<Vec<_>>(),
+            AbilityTarget::AllyTarget => {
+                if let Some(target) = self
+                    .board
+                    .iter_mut()
+                    .filter_map(|c| c.as_mut())
+                    .choose(&mut rand::thread_rng())
+                {
+                    vec![target]
+                } else {
+                    vec![]
+                }
+            }
+            AbilityTarget::SelfTarget => {
+                if let Some(target) = self.board.get_mut(target.unwrap()) {
+                    vec![target.as_mut().unwrap()]
+                } else {
+                    vec![]
+                }
+            }
+            _ => vec![],
+        };
+
+        debug!("Casting ability {:?} with targets {:?}", a, targets);
+
+        for target in targets {
+            match &a.effect {
+                AbilityEffect::Summon(_) => todo!(),
+                AbilityEffect::Transform(_) => todo!(),
+                AbilityEffect::Buff(attack, health, is_permanent) => {
+                    let attack = Self::calculate_ammount(attack, target);
+                    let health = Self::calculate_ammount(health, target);
+                    if !is_permanent {
+                        target.temp_attack_bonus += attack;
+                        target.temp_health_bonus += health;
+                    } else {
+                        target.attack_bonus += attack;
+                        target.health_bonus += health;
+                    }
+                }
+                AbilityEffect::Set(_, _) => todo!(),
+                AbilityEffect::Damage(_) => todo!(),
+                AbilityEffect::Slience(_) => todo!(),
+                AbilityEffect::Stun(_) => todo!(),
+                AbilityEffect::Stealth => todo!(),
+                AbilityEffect::Taunt(_) => todo!(),
+                AbilityEffect::Ranged => todo!(),
+                AbilityEffect::Flying => todo!(),
+                AbilityEffect::FirstStrike => todo!(),
+            }
+        }
+
+        Ok(())
+    }
+
+    fn calculate_ammount(value: &Option<AbilityValue>, target: &CharacterInstance) -> i32 {
+        if let Some(value) = value {
+            match value {
+                AbilityValue::Plain(value) => *value,
+                AbilityValue::PercentHealth(value)
+                | AbilityValue::PercentTargetHealth(value)
+                | AbilityValue::PercentMaxHealth(value)
+                | AbilityValue::PercentTargetMaxHealth(value) => {
+                    (target.get_total_health() as f32 / 100.0 * *value as f32) as i32
+                }
+                AbilityValue::PercentAttack(value)
+                | AbilityValue::PercentTargetAttack(value)
+                | AbilityValue::PercentMaxAttack(value)
+                | AbilityValue::PercentTargetMaxAttack(value) => {
+                    (target.get_total_attack() as f32 / 100.0 * *value as f32) as i32
+                }
+            }
+        } else {
+            0
+        }
     }
 }

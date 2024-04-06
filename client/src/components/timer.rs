@@ -9,8 +9,8 @@ pub(crate) struct TimerPlugin;
 impl Plugin for TimerPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<TimerUi>()
-            .add_system(stopwatch_tick)
-            .add_systems((timer_tick, timer_text_update).chain());
+            .add_systems(Update, stopwatch_tick)
+            .add_systems(Update, (timer_tick, timer_text_update).chain());
     }
 }
 

@@ -10,17 +10,19 @@ impl Plugin for HoverPlugin {
         app.add_event::<ClickEvent>()
             .add_event::<HoverEvent>()
             .add_systems(
+                Update,
                 (check_hover, on_hover_added, on_hover_removed)
                     .chain()
                     .in_set(ChangeDetectionSystemSet::MouseDetection),
             )
-            .add_system(on_click.after(check_hover));
+            .add_systems(Update, on_click.after(check_hover));
     }
 }
 
 #[derive(Debug, Component, Clone)]
 pub struct Hovered;
 
+#[derive(Debug, Event)]
 pub struct HoverEvent(pub Entity, pub bool);
 
 #[derive(Debug, Component, Clone)]
@@ -35,6 +37,7 @@ impl From<Vec2> for BoundingBox {
 #[derive(Debug, Component, Clone)]
 pub struct Clickable;
 
+#[derive(Debug, Event)]
 pub struct ClickEvent(pub Entity);
 
 impl BoundingBox {

@@ -84,6 +84,18 @@ impl GameInstance {
             player.experience += 1;
             player.generate_shop();
             player.money = (turn + 2).min(16);
+
+            // Reset temporary stats
+            player
+                .board
+                .iter_mut()
+                .filter_map(|c| c.as_mut())
+                .for_each(|c| {
+                    c.reset_temporary_stats();
+                });
+
+            // Clear last turn's spells
+            player.spells.clear();
         }
 
         simple_bot_service::perform_bot_turns(self).await;

@@ -1,6 +1,7 @@
 use core::panic;
 use image::{GenericImageView, RgbaImage};
-use protocol_data_types::{CharacterJson, Entity, GodJson};
+use protocol_data_types::{CharacterJson, Entity, GodJson, SpellJson};
+use protocol_types::spell::Spell;
 use protocol_types::{character::Character, heros::God};
 use quote::quote;
 use quote::{format_ident, ToTokens};
@@ -24,6 +25,7 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
         "characters",
         Some((512, 512)),
     )?;
+    generate_from_json::<SpellJson, Spell>("./data/spells", "spells", Some((512, 512)))?;
 
     Ok(())
 }
@@ -73,8 +75,8 @@ where
         })
         .enumerate()
         .map(|(idx, mut item)| {
-            if image.is_some() {
-                if let Err(e) = generate_masked_img(path, &item.0, image.unwrap(), name, idx) {
+            if let Some(image) = image {
+                if let Err(e) = generate_masked_img(path, &item.0, image, name, idx) {
                     panic!("Failed to generate masked image for {:?}: {}", item.0, e)
                 }
             }

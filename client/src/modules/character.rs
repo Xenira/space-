@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, utils::Uuid};
 use protocol::{characters::get_characters, protocol::CharacterInstance};
 
 use crate::{
@@ -32,7 +32,15 @@ pub(crate) struct CharacterPlugin;
 
 impl Plugin for CharacterPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems((on_spawn, on_character_hover, on_character_drag));
+        app.add_systems(
+            Update,
+            (
+                on_spawn,
+                on_character_update,
+                on_character_hover,
+                on_character_drag,
+            ),
+        );
     }
 }
 
@@ -40,10 +48,10 @@ impl Plugin for CharacterPlugin {
 pub struct Character(pub CharacterInstance);
 
 #[derive(Component, Debug)]
-pub struct Health;
+pub struct Health(Uuid);
 
 #[derive(Component, Debug)]
-pub struct Attack;
+pub struct Attack(Uuid);
 
 fn on_spawn(
     mut commands: Commands,
@@ -98,8 +106,8 @@ fn spawn_character_portrait(
         .with_children(|parent| {
             parent
                 .spawn((
-                    SpriteSheetBundle {
-                        texture_atlas: character_assets
+                    SpriteBundle {
+                        texture: character_assets
                             .character_portraits
                             .get(&character.character_id)
                             .unwrap()
@@ -175,20 +183,23 @@ fn spawn_character_portrait(
                                     ..Default::default()
                                 })
                                 .with_children(|parent| {
-                                    parent.spawn(Text2dBundle {
-                                        text: Text::from_section(
-                                            (character.attack + character.attack_bonus).to_string(),
-                                            TextStyle {
-                                                font: ui_assets.font.clone(),
-                                                font_size: 28.0,
-                                                color: Color::WHITE,
-                                            },
-                                        ),
-                                        transform: Transform::from_translation(Vec3::new(
-                                            0.0, 0.0, 1.0,
-                                        )),
-                                        ..Default::default()
-                                    });
+                                    parent.spawn((
+                                        Text2dBundle {
+                                            text: Text::from_section(
+                                                (character.get_total_attack()).to_string(),
+                                                TextStyle {
+                                                    font: ui_assets.font.clone(),
+                                                    font_size: 28.0,
+                                                    color: Color::WHITE,
+                                                },
+                                            ),
+                                            transform: Transform::from_translation(Vec3::new(
+                                                0.0, 0.0, 1.0,
+                                            )),
+                                            ..Default::default()
+                                        },
+                                        Attack(character.id),
+                                    ));
                                 });
 
                             // Health
@@ -202,20 +213,23 @@ fn spawn_character_portrait(
                                     ..Default::default()
                                 })
                                 .with_children(|parent| {
-                                    parent.spawn(Text2dBundle {
-                                        text: Text::from_section(
-                                            (character.health + character.health_bonus).to_string(),
-                                            TextStyle {
-                                                font: ui_assets.font.clone(),
-                                                font_size: 24.0,
-                                                color: Color::WHITE,
-                                            },
-                                        ),
-                                        transform: Transform::from_translation(Vec3::new(
-                                            0.0, 0.0, 1.0,
-                                        )),
-                                        ..Default::default()
-                                    });
+                                    parent.spawn((
+                                        Text2dBundle {
+                                            text: Text::from_section(
+                                                (character.get_total_health()).to_string(),
+                                                TextStyle {
+                                                    font: ui_assets.font.clone(),
+                                                    font_size: 24.0,
+                                                    color: Color::WHITE,
+                                                },
+                                            ),
+                                            transform: Transform::from_translation(Vec3::new(
+                                                0.0, 0.0, 1.0,
+                                            )),
+                                            ..Default::default()
+                                        },
+                                        Health(character.id),
+                                    ));
                                 });
 
                             if full_info {
@@ -307,6 +321,38 @@ fn spawn_character_portrait(
                         });
                 });
         });
+}
+
+fn on_character_update(
+    q_character: Query<&Character, Changed<Character>>,
+    mut q_health: Query<(&Health, &mut Text), Without<Attack>>,
+    mut q_attack: Query<(&Attack, &mut Text), Without<Health>>,
+) {
+    for character in q_character.iter() {
+        for (_, mut health_text) in q_health
+            .iter_mut()
+            .filter(|(health, _)| health.0 == character.0.id)
+        {
+            debug!(
+                "Health updated from {} to {}",
+                health_text.sections[0].value,
+                character.0.get_total_health()
+            );
+            health_text.sections[0].value = character.0.get_total_health().to_string();
+        }
+
+        for (_, mut attack_text) in q_attack
+            .iter_mut()
+            .filter(|(attack, _)| attack.0 == character.0.id)
+        {
+            debug!(
+                "Attack updated from {} to {}",
+                attack_text.sections[0].value,
+                character.0.get_total_attack()
+            );
+            attack_text.sections[0].value = character.0.get_total_attack().to_string();
+        }
+    }
 }
 
 fn on_character_hover(

@@ -23,26 +23,26 @@ pub(crate) struct ComponentsPlugin;
 
 impl Plugin for ComponentsPlugin {
     fn build(&self, app: &mut App) {
-        app.configure_sets(
-            (
-                ChangeDetectionSystemSet::MouseDetection,
-                ChangeDetectionSystemSet::MouseDetectionFlush,
-                ChangeDetectionSystemSet::Animation,
-                ChangeDetectionSystemSet::Tooltip,
-                ChangeDetectionSystemSet::TooltipRender,
-            )
-                .chain()
-                .in_base_set(CoreSet::PreUpdate),
+        app.configure_set(
+            PreUpdate,
+            ChangeDetectionSystemSet::MouseDetection
+                .before(ChangeDetectionSystemSet::MouseDetectionFlush)
+                .before(ChangeDetectionSystemSet::Animation)
+                .before(ChangeDetectionSystemSet::Tooltip)
+                .before(ChangeDetectionSystemSet::TooltipRender),
         )
-        .add_system(apply_system_buffers.in_set(ChangeDetectionSystemSet::MouseDetectionFlush))
-        .add_plugin(animation::AnimationPlugin)
-        .add_plugin(hover::HoverPlugin)
-        .add_plugin(dragndrop::DragNDropPlugin)
-        .add_plugin(on_screen_log::OnScreenLogPlugin)
-        .add_plugin(timer::TimerPlugin)
-        .add_plugin(anchors::AnchorsPlugin)
-        .add_plugin(cursor::CursorPlugin)
-        .add_plugin(tooltip::TooltipPlugin)
-        .add_plugin(background::BackgroundPlugin);
+        .add_systems(
+            Update,
+            apply_deferred.in_set(ChangeDetectionSystemSet::MouseDetectionFlush),
+        )
+        .add_plugins(animation::AnimationPlugin)
+        .add_plugins(hover::HoverPlugin)
+        .add_plugins(dragndrop::DragNDropPlugin)
+        .add_plugins(on_screen_log::OnScreenLogPlugin)
+        .add_plugins(timer::TimerPlugin)
+        .add_plugins(anchors::AnchorsPlugin)
+        .add_plugins(cursor::CursorPlugin)
+        .add_plugins(tooltip::TooltipPlugin)
+        .add_plugins(background::BackgroundPlugin);
     }
 }

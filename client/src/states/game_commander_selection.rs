@@ -22,9 +22,9 @@ pub(crate) struct GameCommanderSelectionPlugin;
 
 impl Plugin for GameCommanderSelectionPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(setup.in_schedule(OnEnter(STATE)))
-            .add_systems((god_click, on_network).in_set(OnUpdate(STATE)))
-            .add_system(cleanup_system::<Cleanup>.in_schedule(OnExit(STATE)));
+        app.add_systems(OnEnter(STATE), setup)
+            .add_systems(Update, (god_click, on_network).run_if(in_state(STATE)))
+            .add_systems(OnExit(STATE), cleanup_system::<Cleanup>);
     }
 }
 
@@ -68,18 +68,19 @@ fn setup(
                     Clickable,
                 ))
                 .with_children(|parent| {
-                    parent.spawn(SpriteSheetBundle {
-                        texture_atlas: god_assets
+                    parent.spawn(SpriteBundle {
+                        texture: god_assets
                             .god_portraits
                             .get(&res_gods.0[0].id)
                             .unwrap()
                             .clone(),
-                        sprite: TextureAtlasSprite::new(0),
                         transform: Transform::from_scale(Vec3::splat(0.25))
                             .with_translation(Vec3::new(0.0, 0.0, -1.0)),
                         ..Default::default()
                     });
                 });
+
+            // TODO: Move to loop
             parent
                 .spawn((
                     SpriteSheetBundle {
@@ -101,13 +102,12 @@ fn setup(
                     Clickable,
                 ))
                 .with_children(|parent| {
-                    parent.spawn(SpriteSheetBundle {
-                        texture_atlas: god_assets
+                    parent.spawn(SpriteBundle {
+                        texture: god_assets
                             .god_portraits
                             .get(&res_gods.0[1].id)
                             .unwrap()
                             .clone(),
-                        sprite: TextureAtlasSprite::new(0),
                         transform: Transform::from_rotation(Quat::from_rotation_z(
                             90.0f32.to_radians(),
                         ))
@@ -137,13 +137,12 @@ fn setup(
                     Clickable,
                 ))
                 .with_children(|parent| {
-                    parent.spawn(SpriteSheetBundle {
-                        texture_atlas: god_assets
+                    parent.spawn(SpriteBundle {
+                        texture: god_assets
                             .god_portraits
                             .get(&res_gods.0[2].id)
                             .unwrap()
                             .clone(),
-                        sprite: TextureAtlasSprite::new(0),
                         transform: Transform::from_rotation(Quat::from_rotation_z(
                             -90.0f32.to_radians(),
                         ))
@@ -173,13 +172,12 @@ fn setup(
                     Clickable,
                 ))
                 .with_children(|parent| {
-                    parent.spawn(SpriteSheetBundle {
-                        texture_atlas: god_assets
+                    parent.spawn(SpriteBundle {
+                        texture: god_assets
                             .god_portraits
                             .get(&res_gods.0[3].id)
                             .unwrap()
                             .clone(),
-                        sprite: TextureAtlasSprite::new(0),
                         transform: Transform::from_rotation(Quat::from_rotation_z(
                             180.0f32.to_radians(),
                         ))

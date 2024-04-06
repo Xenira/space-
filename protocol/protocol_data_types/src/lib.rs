@@ -173,34 +173,86 @@ fn ability_effect_as_tokens(effect: &AbilityEffect) -> TokenStream {
     }
 }
 
-fn ability_value_as_tokens(value: &AbilityValue) -> TokenStream {
-    match value {
-        AbilityValue::Plain(value) => quote! {
-            AbilityValue::Plain(#value)
-        },
-        AbilityValue::PercentHealth(value) => quote! {
-            AbilityValue::PercentHealth(#value)
-        },
-        AbilityValue::PercentAttack(value) => quote! {
-            AbilityValue::PercentAttack(#value)
-        },
-        AbilityValue::PercentMaxHealth(value) => quote! {
-            AbilityValue::PercentMaxHealth(#value)
-        },
-        AbilityValue::PercentMaxAttack(value) => quote! {
-            AbilityValue::PercentMaxAttack(#value)
-        },
-        AbilityValue::PercentTargetHealth(value) => quote! {
-            AbilityValue::PercentTargetHealth(#value)
-        },
-        AbilityValue::PercentTargetAttack(value) => quote! {
-            AbilityValue::PercentTargetAttack(#value)
-        },
-        AbilityValue::PercentTargetMaxHealth(value) => quote! {
-            AbilityValue::PercentTargetMaxHealth(#value)
-        },
-        AbilityValue::PercentTargetMaxAttack(value) => quote! {
-            AbilityValue::PercentTargetMaxAttack(#value)
-        },
+fn ability_value_as_tokens(value: &Option<AbilityValue>) -> TokenStream {
+    if let Some(value) = value {
+        let value = match value {
+            AbilityValue::Plain(value) => quote! {
+                AbilityValue::Plain(#value)
+            },
+            AbilityValue::PercentHealth(value) => quote! {
+                AbilityValue::PercentHealth(#value)
+            },
+            AbilityValue::PercentAttack(value) => quote! {
+                AbilityValue::PercentAttack(#value)
+            },
+            AbilityValue::PercentMaxHealth(value) => quote! {
+                AbilityValue::PercentMaxHealth(#value)
+            },
+            AbilityValue::PercentMaxAttack(value) => quote! {
+                AbilityValue::PercentMaxAttack(#value)
+            },
+            AbilityValue::PercentTargetHealth(value) => quote! {
+                AbilityValue::PercentTargetHealth(#value)
+            },
+            AbilityValue::PercentTargetAttack(value) => quote! {
+                AbilityValue::PercentTargetAttack(#value)
+            },
+            AbilityValue::PercentTargetMaxHealth(value) => quote! {
+                AbilityValue::PercentTargetMaxHealth(#value)
+            },
+            AbilityValue::PercentTargetMaxAttack(value) => quote! {
+                AbilityValue::PercentTargetMaxAttack(#value)
+            },
+        };
+        quote! { Some(#value) }
+    } else {
+        quote! { None }
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct SpellJson {
+    pub id: Option<i32>,
+    pub name: String,
+    pub description: String,
+    pub cost: u8,
+    pub lvl: u8,
+    pub abilities: Vec<Ability>,
+}
+
+impl Entity for SpellJson {
+    fn get_name(&self) -> &str {
+        &self.name
+    }
+
+    fn with_id(&mut self, id: i32) -> Self {
+        self.id = Some(id);
+        self.clone()
+    }
+}
+
+impl ToTokens for SpellJson {
+    fn to_tokens(&self, tokens: &mut quote::__private::TokenStream) {
+        let abilities = self
+            .abilities
+            .iter()
+            .map(ability_as_tokens)
+            .collect::<Vec<_>>();
+
+        let id = self.id.unwrap_or(0);
+        let name = &self.name;
+        let description = &self.description;
+        let cost = self.cost;
+        let lvl = self.lvl;
+        tokens.append_all(quote! {
+            Spell {
+                id: #id,
+                name: #name.to_string(),
+                description: #description.to_string(),
+                cost: #cost,
+                lvl: #lvl,
+                abilities: vec![#(#abilities),*],
+            }
+        });
     }
 }

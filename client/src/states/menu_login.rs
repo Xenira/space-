@@ -19,9 +19,9 @@ pub(crate) struct MenuLoginPlugin;
 impl Plugin for MenuLoginPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<LoginCredentials>()
-            .add_system(logout.in_schedule(OnEnter(STATE)))
-            .add_systems((ui_login, on_login).in_set(OnUpdate(STATE)))
-            .add_system(cleanup_system::<Cleanup>.in_schedule(OnExit(STATE)));
+            .add_systems(OnEnter(STATE), logout)
+            .add_systems(Update, (ui_login, on_login).run_if(in_state(STATE)))
+            .add_systems(OnExit(STATE), cleanup_system::<Cleanup>);
     }
 }
 

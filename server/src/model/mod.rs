@@ -43,6 +43,7 @@ pub mod routes {
             shop::toggle_lock_shop,
             shop::reroll_shop,
             shop::buy_character,
+            shop::buy_spell,
             game_user_characters::get_board,
             game_user_characters::move_character,
             game_user_characters::sell_character,

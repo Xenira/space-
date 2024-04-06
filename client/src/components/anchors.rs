@@ -7,12 +7,8 @@ pub(crate) struct AnchorsPlugin;
 impl Plugin for AnchorsPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<Anchors>()
-            .add_system(
-                setup
-                    .in_base_set(CoreSet::First)
-                    .in_schedule(OnEnter(AppState::Startup)),
-            )
-            .add_system(on_resize);
+            .add_systems(OnEnter(AppState::Startup), setup)
+            .add_systems(Update, on_resize);
     }
 }
 
@@ -166,15 +162,23 @@ fn spawn_anchor(
         )
         .unwrap();
 
-    commands
+    let entity = commands
         .spawn((
             SpatialBundle {
                 transform: Transform::from_translation(position.extend(0.0)),
+                visibility: Visibility::Visible,
                 ..Default::default()
             },
             Anchor { anchor_type },
         ))
-        .id()
+        .id();
+
+    debug!(
+        "Spawned anchor {:?} with id {:?} at {:?}",
+        anchor_type, entity, position
+    );
+
+    entity
 }
 
 fn get_sceen_space_position((width, height): (f32, f32), anchor_type: AnchorType) -> Vec2 {
@@ -194,9 +198,9 @@ fn get_sceen_space_position((width, height): (f32, f32), anchor_type: AnchorType
         } else {
             width / 2.0
         },
-        if anchor_type & AnchorType::BOTTOM == AnchorType::BOTTOM {
+        if anchor_type & AnchorType::TOP == AnchorType::TOP {
             0.0
-        } else if anchor_type & AnchorType::TOP == AnchorType::TOP {
+        } else if anchor_type & AnchorType::BOTTOM == AnchorType::BOTTOM {
             height
         } else {
             height / 2.0

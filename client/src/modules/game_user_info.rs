@@ -14,9 +14,18 @@ pub(crate) struct GameUserInfoPlugin;
 
 impl Plugin for GameUserInfoPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(on_user_info_added.run_if(resource_added::<GameUserRes>()))
-            .add_system(on_user_info_update.run_if(resource_exists_and_changed::<GameUserRes>()))
-            .add_system(on_user_info_removed.run_if(resource_removed::<GameUserRes>()));
+        app.add_systems(
+            Update,
+            on_user_info_added.run_if(resource_added::<GameUserRes>()),
+        )
+        .add_systems(
+            Update,
+            on_user_info_update.run_if(resource_exists_and_changed::<GameUserRes>()),
+        )
+        .add_systems(
+            Update,
+            on_user_info_removed.run_if(resource_removed::<GameUserRes>()),
+        );
     }
 }
 

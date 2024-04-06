@@ -9,8 +9,9 @@ pub(crate) struct TooltipPlugin;
 impl Plugin for TooltipPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<SetTooltipEvent>()
-            .add_startup_system(setup.in_base_set(CoreSet::Last))
+            .add_systems(Startup, setup)
             .add_systems(
+                Update,
                 (on_cursor_move, on_set_tooltip_event)
                     .in_set(ChangeDetectionSystemSet::TooltipRender),
             );
@@ -20,6 +21,7 @@ impl Plugin for TooltipPlugin {
 #[derive(Component)]
 pub struct Tooltip(pub AnchorType, Option<Entity>);
 
+#[derive(Debug, Event)]
 pub struct SetTooltipEvent(pub Entity, pub Option<Entity>);
 
 fn setup(mut commands: Commands) {

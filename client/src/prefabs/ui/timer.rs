@@ -9,7 +9,6 @@ use bevy::prelude::*;
 
 #[derive(Bundle)]
 pub struct TimerBundle {
-    #[bundle]
     pub animation_bundle: AnimationBundle,
 }
 
@@ -48,7 +47,6 @@ impl TimerBundle {
 pub struct TimerTextBundle {
     pub timer_text: TimerTextComponent,
 
-    #[bundle]
     pub text: Text2dBundle,
 }
 

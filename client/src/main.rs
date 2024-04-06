@@ -57,7 +57,7 @@ enum AppState {
     GameResult,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Event)]
 pub struct StateChangeEvent(AppState);
 
 #[derive(Component, Debug)]
@@ -105,15 +105,14 @@ fn main() {
     app.add_state::<AppState>()
         .add_plugins(default_plugins) // .set(ImagePlugin::default_nearest()),
         // .add_plugin(FrameTimeDiagnosticsPlugin::default())
-        .add_plugin(EntityCountDiagnosticsPlugin::default())
-        .add_plugin(EguiPlugin)
+        .add_plugins(EntityCountDiagnosticsPlugin::default())
+        .add_plugins(EguiPlugin)
         .add_event::<StateChangeEvent>()
-        .add_plugin(NetworkingPlugin(base_url))
-        .add_startup_system(setup.after(EguiStartupSet::InitContexts))
-        .add_system(state_change_handler)
-        .add_system(networking_handler)
-        .add_plugin(ComponentsPlugin)
-        .add_plugin(modules::ModulesPlugin)
+        .add_plugins(NetworkingPlugin(base_url))
+        .add_systems(Startup, setup.after(EguiStartupSet::InitContexts))
+        .add_systems(Update, (state_change_handler, networking_handler))
+        .add_plugins(ComponentsPlugin)
+        .add_plugins(modules::ModulesPlugin)
         .add_plugins(game_states::GameStatesPluginGroup);
 
     debug!("Starting app");
@@ -247,7 +246,7 @@ fn state_change_handler(
     mut ev_state_change: EventReader<StateChangeEvent>,
 ) {
     for ev in ev_state_change.iter() {
-        if current_state.0 == ev.0 {
+        if *current_state.get() == ev.0 {
             warn!("State change {:?} is already active", ev);
             continue;
         }

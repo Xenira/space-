@@ -37,7 +37,7 @@ pub async fn perform_bot_turn(bot: &mut GameInstancePlayer, rng: &mut StdRng) {
         if free_index.is_none() {
             // Sell a character
             if let Some(sell_idx) = find_character_to_sell(bot.board.clone().to_vec()) {
-                bot.sell(sell_idx);
+                bot.sell_character(sell_idx);
                 continue;
             } else {
                 break;
@@ -46,7 +46,7 @@ pub async fn perform_bot_turn(bot: &mut GameInstancePlayer, rng: &mut StdRng) {
 
         // Buy a character
         if let Some(character) = find_character_to_buy(buyable, bot.board.clone().to_vec(), rng) {
-            bot.buy(character, free_index.unwrap());
+            bot.buy_character(character, free_index.unwrap());
             continue;
         }
 
@@ -63,7 +63,7 @@ fn find_character_to_sell(characters: Vec<Option<CharacterInstance>>) -> Option<
         .filter(|(_, c)| c.is_some())
         .map(|(i, c)| (i, c.unwrap()))
         .collect::<Vec<_>>();
-    characters.sort_by_key(|(_, c)| c.attack + c.attack_bonus);
+    characters.sort_by_key(|(_, c)| c.get_total_attack());
 
     characters.pop().map(|(i, _)| i)
 }

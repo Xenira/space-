@@ -9,3 +9,7 @@ pub mod gods {
 pub mod characters {
     include!(concat!(env!("OUT_DIR"), "/characters.rs"));
 }
+
+pub mod spells {
+    include!(concat!(env!("OUT_DIR"), "/spells.rs"));
+}

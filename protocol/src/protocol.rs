@@ -1,5 +1,5 @@
 use chrono::{DateTime, Duration, Utc};
-use protocol_types::{character::Character, heros::God, prelude::Ability};
+use protocol_types::{character::Character, heros::God, prelude::Ability, spell::Spell};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -31,12 +31,18 @@ pub enum Protocol {
     GameUpdateResponse(GameUpdate),
     GameStartResponse([i32; 4]),
     AvatarSelectResponse(God),
-    GameShopResponse(GameUserInfo, bool, Vec<Option<CharacterInstance>>),
+    GameShopResponse(
+        GameUserInfo,
+        bool,
+        Vec<Option<CharacterInstance>>,
+        Vec<Option<Spell>>,
+    ),
     BuyRequest(BuyRequest),
     RerollShopRequest,
     BuyResponse(
         GameUserInfo,
         Vec<Option<CharacterInstance>>,
+        Vec<Option<Spell>>,
         Vec<Option<CharacterInstance>>,
     ),
     SellResponse(GameUserInfo, Vec<Option<CharacterInstance>>),
@@ -195,22 +201,30 @@ pub struct GameResult {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct BuyRequest {
-    pub character_idx: u8,
-    pub target_idx: u8,
+    pub source_idx: u8,
+    pub target_idx: Option<u8>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, Hash)]
 pub struct CharacterInstance {
     pub id: Uuid,
     pub character_id: i32,
     pub position: i32,
     pub upgraded: bool,
-    pub attack: i32,
+    attack: i32,
     pub health: i32,
     pub attack_bonus: i32,
     pub health_bonus: i32,
+    pub temp_attack_bonus: i32,
+    pub temp_health_bonus: i32,
     pub cost: u8,
     pub abilities: Vec<Ability>,
+}
+
+impl PartialEq for CharacterInstance {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+    }
 }
 
 impl CharacterInstance {
@@ -239,6 +253,8 @@ impl CharacterInstance {
             },
             attack_bonus: 0,
             health_bonus: 0,
+            temp_attack_bonus: 0,
+            temp_health_bonus: 0,
             cost: character.cost,
             abilities: if upgraded {
                 upgrade_abilities
@@ -269,11 +285,16 @@ impl CharacterInstance {
     }
 
     pub fn get_total_attack(&self) -> i32 {
-        self.attack + self.attack_bonus
+        self.attack + self.attack_bonus + self.temp_attack_bonus
     }
 
     pub fn get_total_health(&self) -> i32 {
-        self.health + self.health_bonus
+        self.health + self.health_bonus + self.temp_health_bonus
+    }
+
+    pub fn reset_temporary_stats(&mut self) {
+        self.temp_attack_bonus = 0;
+        self.temp_health_bonus = 0;
     }
 }
 

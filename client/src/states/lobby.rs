@@ -15,8 +15,8 @@ pub(crate) struct LobbyPlugin;
 
 impl Plugin for LobbyPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems((ui_lobby, on_network).in_set(OnUpdate(STATE)))
-            .add_system(cleanup_system::<Cleanup>.in_schedule(OnExit(STATE)));
+        app.add_systems(Update, (ui_lobby, on_network).run_if(in_state(STATE)))
+            .add_systems(OnExit(STATE), cleanup_system::<Cleanup>);
     }
 }
 

@@ -92,6 +92,7 @@ pub async fn get_shop(game: GameGuard, user: &User) -> Json<Protocol> {
             },
             game_user.shop.locked,
             game_user.shop.characters.clone(),
+            game_user.shop.spells.clone(),
         ))
     } else {
         Json(Error::new_protocol(
@@ -117,6 +118,7 @@ pub async fn reroll_shop(game: GameGuard, user: &User) -> Json<Protocol> {
                 },
                 false,
                 game_user.shop.characters.clone(),
+                game_user.shop.spells.clone(),
             ))
         } else {
             Json(Error::new_protocol_response(
@@ -150,6 +152,7 @@ pub async fn toggle_lock_shop(game: GameGuard, user: &User) -> Json<Protocol> {
             },
             user.shop.locked,
             user.shop.characters.clone(),
+            user.shop.spells.clone(),
         ))
     } else {
         Json(Error::new_protocol(
@@ -159,8 +162,56 @@ pub async fn toggle_lock_shop(game: GameGuard, user: &User) -> Json<Protocol> {
     }
 }
 
-#[post("/games/shops/buy", data = "<buy_request>")]
+#[post("/games/shops/buy_character", data = "<buy_request>")]
 pub async fn buy_character(
+    user: &User,
+    game: GameGuard,
+    buy_request: Json<BuyRequest>,
+) -> Json<Protocol> {
+    let mut game = game.0.lock().await;
+    let Some(target_idx) = buy_request.target_idx else {
+        return Json(Error::new_protocol_response(
+            Status::InternalServerError.code,
+            "Internal server error".to_string(),
+            Protocol::BuyRequest(buy_request.into_inner()),
+        ));
+    };
+
+    if let Some(game_user) = game.get_user_mut(user.id) {
+        if game_user
+            .buy_character(buy_request.source_idx as usize, target_idx as usize)
+            .is_ok()
+        {
+            Json(Protocol::BuyResponse(
+                GameUserInfo {
+                    experience: game_user.experience,
+                    health: game_user.health,
+                    money: game_user.money,
+                    name: game_user.display_name.to_string(),
+                    avatar: game_user.god.clone().map(|g| g.id),
+                },
+                game_user.shop.characters.clone(),
+                game_user.shop.spells.to_vec(),
+                game_user.board.to_vec(),
+            ))
+        } else {
+            Json(Error::new_protocol_response(
+                Status::InternalServerError.code,
+                "Internal server error".to_string(),
+                Protocol::BuyRequest(buy_request.into_inner()),
+            ))
+        }
+    } else {
+        Json(Error::new_protocol_response(
+            Status::InternalServerError.code,
+            "Internal server error".to_string(),
+            Protocol::BuyRequest(buy_request.into_inner()),
+        ))
+    }
+}
+
+#[post("/games/shops/buy_spell", data = "<buy_request>")]
+pub async fn buy_spell(
     user: &User,
     game: GameGuard,
     buy_request: Json<BuyRequest>,
@@ -168,9 +219,9 @@ pub async fn buy_character(
     let mut game = game.0.lock().await;
     if let Some(game_user) = game.get_user_mut(user.id) {
         if game_user
-            .buy(
-                buy_request.character_idx as usize,
-                buy_request.target_idx as usize,
+            .buy_spell(
+                buy_request.source_idx as usize,
+                buy_request.target_idx.map(|i| i as usize),
             )
             .is_ok()
         {
@@ -183,6 +234,7 @@ pub async fn buy_character(
                     avatar: game_user.god.clone().map(|g| g.id),
                 },
                 game_user.shop.characters.clone(),
+                game_user.shop.spells.to_vec(),
                 game_user.board.to_vec(),
             ))
         } else {

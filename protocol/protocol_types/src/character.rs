@@ -12,6 +12,12 @@ pub struct Character {
     pub abilities: Vec<Ability>,
 }
 
+impl PartialEq for Character {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct CharacterUpgrade {
     pub name: String,
@@ -36,6 +42,9 @@ pub enum AbilityTrigger {
     OnDeath,
     OnSurvive,
     Passive,
+    OnBuy,
+    OnBattleStart,
+    OnBattleEnd,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Hash)]
@@ -45,7 +54,7 @@ pub enum AbilityEffect {
     // Transform into a character with the given id
     Transform(i32),
     // Buff/Debuff the given character
-    Buff(AbilityValue, AbilityValue, bool),
+    Buff(Option<AbilityValue>, Option<AbilityValue>, bool),
     // Set the given character stats
     Set(AbilityValue, AbilityValue),
     // Damage the given character

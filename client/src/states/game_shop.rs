@@ -9,13 +9,16 @@ use crate::{
         dragndrop::{Dragable, DropEvent, DropTagret},
         hover::{BoundingBox, ClickEvent, Clickable, Hoverable},
     },
-    modules::{character::Character, game_user_info::GameUserRes, god::God},
+    modules::{self, character::Character, game_user_info::GameUserRes, god::God},
     networking::{networking_events::NetworkingEvent, networking_ressource::NetworkingRessource},
     prefabs::animation,
     AppState, Cleanup,
 };
 use bevy::prelude::*;
-use protocol::protocol::{BuyRequest, CharacterInstance, GameOpponentInfo, Protocol};
+use protocol::{
+    protocol::{BuyRequest, CharacterInstance, GameOpponentInfo, Protocol},
+    protocol_types::spell::Spell,
+};
 use reqwest::Method;
 
 use super::startup::{CharacterAssets, UiAssets};
@@ -30,8 +33,9 @@ impl Plugin for GameShopPlugin {
             .add_event::<ShopChangedEvent>()
             .add_event::<BoardChangedEvent>()
             .add_event::<GameUsersChangedEvent>()
-            .add_system(setup.in_schedule(OnEnter(STATE)))
+            .add_systems(OnEnter(STATE), setup)
             .add_systems(
+                Update,
                 (
                     on_network,
                     generate_shop,
@@ -43,9 +47,9 @@ impl Plugin for GameShopPlugin {
                     on_lock,
                     on_sell,
                 )
-                    .in_set(OnUpdate(STATE)),
+                    .run_if(in_state(STATE)),
             )
-            .add_system(cleanup_system::<Cleanup>.in_schedule(OnExit(STATE)));
+            .add_systems(OnExit(STATE), cleanup_system::<Cleanup>);
     }
 }
 
@@ -55,7 +59,11 @@ pub struct Shop;
 #[derive(Component, Debug)]
 pub struct ShopCharacter {
     idx: u8,
-    character: CharacterInstance,
+}
+
+#[derive(Component, Debug)]
+pub struct ShopSpell {
+    idx: u8,
 }
 
 #[derive(Component)]
@@ -65,7 +73,25 @@ pub struct Pedestals;
 pub struct Pedestal(pub u8);
 
 #[derive(Component, Debug)]
-pub struct BoardCharacter(pub u8, pub CharacterInstance);
+pub struct BoardCharacter {
+    pub index: u8,
+    pub own: bool,
+    pub character: CharacterInstance,
+}
+
+impl BoardCharacter {
+    pub fn new(index: u8, own: bool, character: CharacterInstance) -> Self {
+        Self {
+            index,
+            own,
+            character,
+        }
+    }
+
+    pub fn update(&mut self, character: CharacterInstance) {
+        self.character = character;
+    }
+}
 
 #[derive(Component, Debug)]
 pub struct Reroll;
@@ -79,13 +105,13 @@ pub struct Sell;
 #[derive(Component, Debug)]
 pub struct GameUsers;
 
-#[derive(Debug)]
-pub struct ShopChangedEvent(pub Vec<Option<CharacterInstance>>);
+#[derive(Debug, Event)]
+pub struct ShopChangedEvent(pub Vec<Option<CharacterInstance>>, pub Vec<Option<Spell>>);
 
-#[derive(Debug)]
+#[derive(Debug, Event)]
 pub struct BoardChangedEvent(pub Vec<Option<CharacterInstance>>);
 
-#[derive(Debug)]
+#[derive(Debug, Event)]
 pub struct GameUsersChangedEvent(pub Vec<GameOpponentInfo>);
 
 #[derive(Resource, Debug, Default)]
@@ -274,10 +300,10 @@ fn on_network(
 ) {
     for ev in ev_networking.iter() {
         match &ev.0 {
-            Protocol::GameShopResponse(user_info, locked, shop) => {
+            Protocol::GameShopResponse(user_info, locked, shop, spells) => {
                 debug!("GameShopResponse: {:?}", shop);
                 commands.insert_resource(GameUserRes(user_info.clone()));
-                ev_shop_change.send(ShopChangedEvent(shop.clone()));
+                ev_shop_change.send(ShopChangedEvent(shop.to_vec(), spells.to_vec()));
                 for (entity, animation) in q_lock.iter_mut() {
                     if *locked {
                         if let Some(lock_transition) = animation.get_transition("lock") {
@@ -288,10 +314,10 @@ fn on_network(
                     }
                 }
             }
-            Protocol::BuyResponse(user_info, shop, board) => {
+            Protocol::BuyResponse(user_info, shop, spells, board) => {
                 debug!("BuyResponse: {:?}", ev);
                 commands.insert_resource(GameUserRes(user_info.clone()));
-                ev_shop_change.send(ShopChangedEvent(shop.clone()));
+                ev_shop_change.send(ShopChangedEvent(shop.clone(), spells.to_vec()));
                 ev_board_change.send(BoardChangedEvent(board.clone()));
             }
             Protocol::BoardResponse(board) => {
@@ -327,19 +353,31 @@ fn on_buy(
     mut commands: Commands,
     mut ev_droped: EventReader<DropEvent>,
     q_pedestal: Query<&Pedestal>,
-    q_god: Query<&ShopCharacter>,
+    q_shop_character: Query<&ShopCharacter>,
+    q_spell: Query<&ShopSpell>,
     mut networking: ResMut<NetworkingRessource>,
 ) {
     for ev in ev_droped.iter() {
         if let Ok(pedestal) = q_pedestal.get(ev.target) {
-            if let Ok(god) = q_god.get(ev.entity) {
-                debug!("on_buy: {:?} {:?}", pedestal, god);
+            if let Ok(shop_character) = q_shop_character.get(ev.entity) {
+                debug!("by character: {:?} {:?}", pedestal, shop_character);
                 networking.request_data(
                     Method::POST,
-                    "games/shops/buy",
+                    "games/shops/buy_character",
                     &BuyRequest {
-                        character_idx: god.idx,
-                        target_idx: pedestal.0,
+                        source_idx: shop_character.idx,
+                        target_idx: Some(pedestal.0),
+                    },
+                );
+                commands.entity(ev.entity).despawn_recursive();
+            } else if let Ok(spell) = q_spell.get(ev.entity) {
+                debug!("buy spell: {:?} {:?}", pedestal, spell);
+                networking.request_data(
+                    Method::POST,
+                    "games/shops/buy_spell",
+                    &BuyRequest {
+                        source_idx: spell.idx,
+                        target_idx: Some(pedestal.0),
                     },
                 );
                 commands.entity(ev.entity).despawn_recursive();
@@ -384,7 +422,7 @@ fn on_sell(
             debug!("on_sell: {:?}", character);
             networking.request(
                 Method::DELETE,
-                format!("games/characters/{}", character.0).as_str(),
+                format!("games/characters/{}", character.index).as_str(),
             );
         }
     }
@@ -394,16 +432,16 @@ fn on_move(
     mut commands: Commands,
     mut ev_droped: EventReader<DropEvent>,
     q_pedestal: Query<&Pedestal>,
-    q_god: Query<&BoardCharacter>,
+    q_character: Query<&BoardCharacter>,
     mut networking: ResMut<NetworkingRessource>,
 ) {
     for ev in ev_droped.iter() {
         if let Ok(pedestal) = q_pedestal.get(ev.target) {
-            if let Ok(god) = q_god.get(ev.entity) {
-                debug!("on_move: {:?} {:?}", pedestal, god);
+            if let Ok(character) = q_character.get(ev.entity) {
+                debug!("on_move: {:?} {:?}", pedestal, character);
                 networking.request(
                     Method::PUT,
-                    format!("games/characters/{}/{}", god.0, pedestal.0).as_str(),
+                    format!("games/characters/{}/{}", character.index, pedestal.0).as_str(),
                 );
                 commands.entity(ev.entity).despawn_recursive();
             }
@@ -458,10 +496,7 @@ fn generate_shop(
                             frame_animation.clone(),
                             AnimationTimer(Timer::from_seconds(0.05, TimerMode::Repeating)),
                             Clickable,
-                            ShopCharacter {
-                                idx: i as u8,
-                                character: character.clone(),
-                            },
+                            ShopCharacter { idx: i as u8 },
                             Dragable,
                             Character(character.clone()),
                             CharacterCount(count),
@@ -480,6 +515,60 @@ fn generate_shop(
                                     parent.spawn(Text2dBundle {
                                         text: Text::from_section(
                                             character.cost.to_string(),
+                                            TextStyle {
+                                                font: ui_assets.font.clone(),
+                                                font_size: 28.0,
+                                                color: Color::BLACK,
+                                            },
+                                        ),
+                                        transform: Transform::from_translation(Vec3::new(
+                                            0.0, 0.0, 1.0,
+                                        )),
+                                        ..Default::default()
+                                    });
+                                });
+                        });
+                }
+            }
+
+            for (i, spell) in ev.1.iter().enumerate() {
+                if let Some(spell) = spell {
+                    parent
+                        .spawn((
+                            SpriteSheetBundle {
+                                texture_atlas: shop_frame_atlas_handle.clone(),
+                                sprite: TextureAtlasSprite::new(0),
+                                transform: Transform::from_scale(Vec3::splat(2.0))
+                                    .with_translation(Vec3::new(
+                                        68.0 * 2.0 * (i + ev.0.len()) as f32,
+                                        0.0,
+                                        1.0,
+                                    )),
+                                ..Default::default()
+                            },
+                            Hoverable("hover".to_string(), "leave".to_string()),
+                            BoundingBox(Vec3::new(64.0, 64.0, 0.0), Quat::from_rotation_z(0.0)),
+                            frame_animation.clone(),
+                            AnimationTimer(Timer::from_seconds(0.05, TimerMode::Repeating)),
+                            Clickable,
+                            ShopSpell { idx: i as u8 },
+                            Dragable,
+                            modules::spell::Spell(spell.clone()),
+                        ))
+                        .with_children(|parent| {
+                            parent
+                                .spawn(SpriteBundle {
+                                    texture: character_assets.price_orb.clone(),
+                                    transform: Transform::from_translation(Vec3::new(
+                                        24.0, 28.0, 7.0,
+                                    ))
+                                    .with_scale(Vec3::splat(0.75)),
+                                    ..Default::default()
+                                })
+                                .with_children(|parent| {
+                                    parent.spawn(Text2dBundle {
+                                        text: Text::from_section(
+                                            spell.cost.to_string(),
                                             TextStyle {
                                                 font: ui_assets.font.clone(),
                                                 font_size: 28.0,
@@ -551,7 +640,7 @@ fn generate_board(
                         frame_animation.clone(),
                         AnimationTimer(Timer::from_seconds(0.05, TimerMode::Repeating)),
                         Clickable,
-                        BoardCharacter(idx as u8, ev.0[idx].clone().unwrap()),
+                        BoardCharacter::new(idx as u8, true, ev.0[idx].clone().unwrap()),
                         Dragable,
                         Character(ev.0[idx].clone().unwrap()),
                     ));

@@ -14,9 +14,7 @@
           {
             "PercentAttack": 100
           },
-          {
-            "Plain": 0
-          },
+          null,
           false
         ]
       },
@@ -37,9 +35,7 @@
             {
               "PercentAttack": 200
             },
-            {
-              "Plain": 0
-            },
+            null,
             false
           ]
         },

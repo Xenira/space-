@@ -1,14 +1,14 @@
 Service:
 	☐ Validate display name
 	☐ Opponents need to show player names
-	☐ Reroll button not visible
+	✔ Reroll button not visible @done(23-06-05 20:18)
 	Lobby:
 		☐ Kick Player
 		☐ Promote Player
 		☐ Invite Player
 		✔ Do not disclose master user id @done(23-06-04 11:39)
 	Character Selection:
-		☐ Select random Character when time runs out <- causes panic on compat
+		☐ Select random Character when time runs out <- causes panic on combat
 	Matchmaking:
 		☐ Join Queue
 		☐ Leave Queue
@@ -103,20 +103,28 @@ Client:
 			☐ Add glow to duplicate characters
 			☐ Add glow to characters that can be upgraded
 		Battle:
-			☐ Add battle UI
+			✔ Add battle UI @done(23-07-30 02:17)
 			☐ Change target health on animation hit
 			☐ Change character health/attack color (white -> >= base, red -> less than base)
 			☐ Add transition animation to battle
 			☐ Add battle result animation
+		Spells:
+			✔ Add spells to shop @done(23-07-30 02:16)
+			☐ Add new spell border
+			✔ Load spell assets @started(23-07-30 02:20) @done(23-07-31 00:34) @lasted(22h14m20s)
+			☐ Display last spell used
+			☐ Drop zone for non target spells
 	Settings:
 		Dev:
 			☐ Log Settings
 		Privacy:
 			☐ Crash Reports
 	Animation:
+		☐ Switch to bevy animation for combat actions @started(23-07-31 00:35)
 		☐ Add transform animations
 		☐ Text animation
 	Misc:
+		✔ Fix deprecations from bevy upgrade @started(23-07-30 03:30) @done(23-07-31 00:34) @lasted(21h4m41s)
 		☐ Add labels to drop targets
 		☐ Add drag and drop animation
 		☐ Add version check

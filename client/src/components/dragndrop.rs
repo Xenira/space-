@@ -15,6 +15,7 @@ impl Plugin for DragNDropPlugin {
         app.add_event::<DragEvent>()
             .add_event::<DropEvent>()
             .add_systems(
+                Update,
                 (on_drag, on_drop)
                     .chain()
                     .in_set(ChangeDetectionSystemSet::MouseDetection),
@@ -34,10 +35,10 @@ pub struct Dragged {
     pub original_parent: Option<Entity>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Event)]
 pub struct DragEvent(pub Entity);
 
-#[derive(Debug)]
+#[derive(Debug, Event)]
 pub struct DropEvent {
     pub target: Entity,
     pub entity: Entity,

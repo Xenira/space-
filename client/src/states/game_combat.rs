@@ -20,19 +20,26 @@ impl Plugin for GameCombatPlugin {
     fn build(&self, app: &mut App) {
         app.add_state::<GameCombatState>()
             .add_event::<BattleBoardChangedEvent>()
-            .add_system(setup.in_schedule(OnEnter(STATE)))
-            .add_system((generate_board).in_set(OnUpdate(STATE)))
-            .add_system(
-                play_animation
-                    .in_schedule(OnEnter(GameCombatState::AnimationFinished))
+            .add_systems(OnEnter(STATE), setup)
+            .add_systems(Update, generate_board.run_if(in_state(STATE)))
+            .add_systems(
+                OnExit(GameCombatState::PlayAnimation),
+                animation_finished.run_if(in_state(STATE)),
+            )
+            .add_systems(
+                Update,
+                play_next_animation
+                    .run_if(in_state(GameCombatState::AnimationFinished))
                     .run_if(in_state(STATE)),
             )
-            .add_system(
-                animation_finished
-                    .in_set(OnUpdate(GameCombatState::PlayAnimation))
+            .add_systems(
+                Update,
+                (animation_timer)
+                    .run_if(in_state(GameCombatState::PlayAnimation))
                     .run_if(in_state(STATE)),
             )
-            .add_system(cleanup_system::<Cleanup>.in_schedule(OnExit(STATE)));
+            .add_systems(OnExit(STATE), cleanup_system::<Cleanup>)
+            .init_resource::<AnimationTimer>();
     }
 }
 
@@ -44,6 +51,9 @@ pub(crate) enum GameCombatState {
     AnimationFinished,
     WaitingForShop,
 }
+
+#[derive(Resource, Default)]
+struct AnimationTimer(Timer);
 
 #[derive(Component, Debug)]
 pub struct BoardOwn;
@@ -57,7 +67,7 @@ pub struct OpponentProfile;
 #[derive(Resource, Debug)]
 pub struct BattleRes(pub BattleResponse);
 
-#[derive(Debug)]
+#[derive(Debug, Event)]
 pub struct BattleBoardChangedEvent(pub [Vec<Option<CharacterInstance>>; 2]);
 
 fn setup(
@@ -112,7 +122,7 @@ fn setup(
     ]));
 }
 
-fn play_animation(
+fn play_next_animation(
     mut commands: Commands,
     mut state: ResMut<BattleRes>,
     mut combat_state: ResMut<NextState<GameCombatState>>,
@@ -126,20 +136,23 @@ fn play_animation(
     q_animation: Query<(Entity, &Animation)>,
     q_target: Query<(&GlobalTransform, &BoardCharacter)>,
     mut ev_board_change: EventWriter<BattleBoardChangedEvent>,
+    mut animation_timer: ResMut<AnimationTimer>,
 ) {
     let current_action = state.0.actions.first().cloned();
     if let Some(current_action) = current_action {
         if let Some((entity, character, children, source_global_transform, source_transform)) =
             q_board_character
                 .iter()
-                .find(|(_, board_character, _, _, _)| board_character.1.id == current_action.source)
+                .find(|(_, board_character, _, _, _)| {
+                    board_character.character.id == current_action.source
+                })
         {
-            match current_action.action {
+            let duration = match current_action.action {
                 protocol::protocol::BattleActionType::Attack => {
                     if let Some(target) = current_action.target {
                         if let Some((transform, _)) = q_target
                             .iter()
-                            .find(|(_, board_character)| board_character.1.id == target)
+                            .find(|(_, board_character)| board_character.character.id == target)
                         {
                             debug!("Playing animation for {:?}", character);
                             let target_transform = transform.compute_transform().translation;
@@ -159,6 +172,8 @@ fn play_animation(
                     } else {
                         warn!("No target found for {:?}", current_action);
                     }
+
+                    1.0
                 }
                 protocol::protocol::BattleActionType::Die => {
                     debug!("Playing animation for {:?}", character);
@@ -177,65 +192,75 @@ fn play_animation(
                             current_action.result_opponent.clone(),
                         ]));
                     }
+                    0.0
                 }
-                _ => (),
-            }
+                _ => 0.0,
+            };
+            animation_timer.0 = Timer::from_seconds(duration, TimerMode::Once);
+
             debug!("Changing state to PlayAnimation");
             combat_state.set(GameCombatState::PlayAnimation);
         } else {
             warn!("No character found for {:?}", current_action);
-            combat_state.set(GameCombatState::AnimationFinished);
         }
     } else {
         combat_state.set(GameCombatState::WaitingForShop);
     }
 }
 
+fn animation_timer(
+    time: Res<Time>,
+    mut timer: ResMut<AnimationTimer>,
+    mut next_state: ResMut<NextState<GameCombatState>>,
+) {
+    timer.0.tick(time.delta());
+
+    if timer.0.finished() {
+        next_state.set(GameCombatState::AnimationFinished);
+    }
+}
+
 fn animation_finished(
     mut battle: ResMut<BattleRes>,
-    q_board_character: Query<(Entity, &Children, &BoardCharacter)>,
-    mut ev_animation_finished: EventReader<AnimationFinished>,
     mut ev_board_change: EventWriter<BattleBoardChangedEvent>,
 ) {
-    if let Some(current_action) = battle.0.actions.first().cloned() {
-        for ev in ev_animation_finished.iter() {
-            debug!("Animation finished for {:?}", ev.0);
-            if q_board_character
-                .iter()
-                .any(|(entity, children, board_character)| {
-                    (ev.0 == entity || children.contains(&ev.0))
-                        && (board_character.1.id == current_action.source
-                            || (current_action.target.is_some()
-                                && board_character.1.id == current_action.target.unwrap()))
-                })
-            {
-                debug!(
-                    "Animation finished for {:?} on entity {:?}",
-                    current_action, ev.0
-                );
-                battle.0.actions.remove(0);
-                ev_board_change.send(BattleBoardChangedEvent([
-                    current_action.result_own.clone(),
-                    current_action.result_opponent.clone(),
-                ]));
-            }
-        }
+    if battle.0.actions.is_empty() {
+        return;
     }
+    let action = battle.0.actions.remove(0);
+    debug!("Animation finished {:?}", action);
+    ev_board_change.send(BattleBoardChangedEvent([
+        action.result_own.clone(),
+        action.result_opponent.clone(),
+    ]));
 }
 
 fn generate_board(
     mut commands: Commands,
     mut combat_state: ResMut<NextState<GameCombatState>>,
     mut ev_shop_change: EventReader<BattleBoardChangedEvent>,
-    q_board_character: Query<(Entity, &BoardCharacter)>,
+    mut q_board_character: Query<(Entity, &mut BoardCharacter)>,
     q_own: Query<Entity, With<BoardOwn>>,
     q_opponent: Query<Entity, With<BoardOpponent>>,
 ) {
     for ev in ev_shop_change.iter() {
         debug!("Generating board");
 
-        for (entity, _) in q_board_character.iter() {
-            commands.entity(entity).despawn_recursive();
+        // Update existing characters
+        let mut updated_characters = Vec::new();
+        for (entity, mut bc) in q_board_character.iter_mut() {
+            let own_update = ev.0[0].iter().flatten().find(|c| c.id == bc.character.id);
+            let opponent_update = ev.0[1].iter().flatten().find(|c| c.id == bc.character.id);
+
+            if (bc.own && own_update.is_none()) || (!bc.own && opponent_update.is_none()) {
+                commands.entity(entity).despawn_recursive();
+            } else if let Some(update) = own_update {
+                updated_characters.push(update.id);
+                bc.update(update.clone());
+            } else if let Some(update) = opponent_update {
+                updated_characters.push(update.id);
+                bc.update(update.clone());
+            }
         }
 
         for (player_idx, idx, board, character) in
@@ -260,10 +285,15 @@ fn generate_board(
                         .enumerate()
                         .map(move |(idx, character)| (player_idx, idx, entity, character.as_ref()))
                 })
-                .filter(|(_, _, _, character)| character.is_some())
-                .map(|(player_idx, idx, entity, character)| {
-                    (player_idx, idx, entity, character.unwrap())
+                .filter_map(|(player_idx, idx, entity, character)| {
+                    if let Some(character) = character {
+                        Some((player_idx, idx, entity, character))
+                    } else {
+                        None
+                    }
                 })
+                .filter(|(_, _, _, character)| !updated_characters.contains(&character.id))
+                .map(|(player_idx, idx, entity, character)| (player_idx, idx, entity, character))
         {
             commands.entity(board).with_children(|parent| {
                 parent.spawn((
@@ -283,7 +313,7 @@ fn generate_board(
                         ..Default::default()
                     },
                     Character(character.clone()),
-                    BoardCharacter(idx as u8, character.clone()),
+                    BoardCharacter::new(idx as u8, player_idx == 0, character.clone()),
                     Hoverable("hover".to_string(), "leave".to_string()),
                     BoundingBox(Vec3::new(64.0, 64.0, 0.0), Quat::from_rotation_z(0.0)),
                 ));

@@ -12,6 +12,7 @@ pub(crate) struct AnimationPlugin;
 impl Plugin for AnimationPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<AnimationFinished>().add_systems(
+            Update,
             (animate_sprite, animate_transform).in_set(ChangeDetectionSystemSet::Animation),
         );
     }
@@ -22,7 +23,6 @@ pub struct AnimationBundle {
     pub animation: Animation,
     pub animation_timer: AnimationTimer,
 
-    #[bundle]
     pub sprite_sheet: SpriteSheetBundle,
 }
 
@@ -200,7 +200,7 @@ pub enum AnimationDirection {
 #[derive(Component, Deref, DerefMut)]
 pub struct AnimationTimer(pub Timer);
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Event)]
 pub struct AnimationFinished(pub Entity);
 
 fn animate_sprite(

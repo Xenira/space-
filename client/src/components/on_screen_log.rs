@@ -11,14 +11,14 @@ impl Plugin for OnScreenLogPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<LogEntry>()
             .insert_resource(LogEntries(Vec::new()))
-            .add_systems((add_log, ui_log));
+            .add_systems(Update, (add_log, ui_log));
     }
 }
 
 #[derive(Resource)]
 struct LogEntries(pub Vec<LogEntry>);
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Event)]
 pub struct LogEntry {
     pub text: String,
     pub created: DateTime<Local>,

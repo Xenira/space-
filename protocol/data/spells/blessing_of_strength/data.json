@@ -1,0 +1,23 @@
+{
+    "name": "Blessing Of Strength",
+    "description": "Increases the attack of all friendly units by 1 for the next battle.",
+    "cost": 2,
+    "lvl": 2,
+    "abilities": [
+        {
+            "name": "",
+            "description": "",
+            "trigger": "OnBuy",
+            "effect": {
+                "Buff": [
+                    {
+                        "Plain": 1
+                    },
+                    null,
+                    false
+                ]
+            },
+            "target": "AllAllyTarget"
+        }
+    ]
+}

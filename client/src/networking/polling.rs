@@ -16,6 +16,7 @@ pub struct PollingReceiver(Receiver<NetworkingEvent>);
 #[derive(Resource, Debug)]
 pub struct RateLimitTimer(pub Timer);
 
+#[derive(Debug, Event)]
 pub(crate) enum PollingStatus {
     Start,
     Stop,

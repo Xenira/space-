@@ -6,8 +6,8 @@ pub(crate) struct CursorPlugin;
 
 impl Plugin for CursorPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(setup.in_schedule(OnExit(AppState::Startup)))
-            .add_system(update.in_base_set(CoreSet::First));
+        app.add_systems(OnExit(AppState::Startup), setup)
+            .add_systems(First, update);
     }
 }
 

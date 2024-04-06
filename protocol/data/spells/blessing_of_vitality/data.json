@@ -1,0 +1,23 @@
+{
+    "name": "Blessing Of Vitality",
+    "description": "Increases the health of all friendly units by 1 for the next battle.",
+    "cost": 2,
+    "lvl": 2,
+    "abilities": [
+        {
+            "name": "",
+            "description": "",
+            "trigger": "OnBuy",
+            "effect": {
+                "Buff": [
+                    null,
+                    {
+                        "Plain": 1
+                    },
+                    false
+                ]
+            },
+            "target": "AllAllyTarget"
+        }
+    ]
+}

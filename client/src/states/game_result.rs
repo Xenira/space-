@@ -20,9 +20,9 @@ pub(crate) struct GameResultPlugin;
 
 impl Plugin for GameResultPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(setup.in_schedule(OnEnter(STATE)))
-            .add_system(on_back_button_click.in_set(OnUpdate(STATE)))
-            .add_system(cleanup_system::<Cleanup>.in_schedule(OnExit(STATE)));
+        app.add_systems(OnEnter(STATE), setup)
+            .add_systems(Update, on_back_button_click.run_if(in_state(STATE)))
+            .add_systems(OnExit(STATE), cleanup_system::<Cleanup>);
     }
 }
 
