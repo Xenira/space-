@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::{states::startup::UiAssets, AppState, MainCamera};
+use crate::{states::startup::startup::UiAssets, AppState, MainCamera};
 
 pub(crate) struct CursorPlugin;
 
@@ -38,7 +38,7 @@ fn update(
     mut q_cursor: Query<&mut Transform, With<Cursor>>,
 ) {
     let (camera, camera_transform) = q_camera.single();
-    if let Some(cursor_event) = ev_cursor_move.iter().last() {
+    if let Some(cursor_event) = ev_cursor_move.read().last() {
         if let Some(world_position) =
             camera.viewport_to_world_2d(camera_transform, cursor_event.position)
         {

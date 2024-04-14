@@ -61,7 +61,7 @@ fn on_join(
     mut ev_networking: EventReader<NetworkingEvent>,
     mut ev_state_change: EventWriter<StateChangeEvent>,
 ) {
-    for ev in ev_networking.iter() {
+    for ev in ev_networking.read() {
         if let Protocol::LobbyStatusResponse(lobby) = &ev.0 {
             debug!("Got lobby response {:?}", lobby);
 

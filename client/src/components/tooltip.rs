@@ -41,7 +41,7 @@ fn on_cursor_move(
     mut q_tooltip: Query<(&mut Tooltip, Entity)>,
     res_anchor: Res<Anchors>,
 ) {
-    if let Some(x) = ev_cursor_move.iter().last().map(|e| e.position.x) {
+    if let Some(x) = ev_cursor_move.read().last().map(|e| e.position.x) {
         let width = q_window.get_single().unwrap().width();
         let (mut anchor, tooltip) = q_tooltip.get_single_mut().unwrap();
 
@@ -66,7 +66,7 @@ fn on_set_tooltip_event(
     mut ev: EventReader<SetTooltipEvent>,
     mut q_tooltip: Query<(&mut Tooltip, Entity)>,
 ) {
-    for SetTooltipEvent(ref_entity, new_tooltip_entity) in ev.iter() {
+    for SetTooltipEvent(ref_entity, new_tooltip_entity) in ev.read() {
         let (mut tooltip, tooltip_entity) = q_tooltip.get_single_mut().unwrap();
 
         if let Some(new_tooltip_entity) = new_tooltip_entity {

@@ -7,7 +7,7 @@ use crate::{
         hover::HoverEvent,
         tooltip::SetTooltipEvent,
     },
-    states::startup::{SpellAssets, UiAssets},
+    states::startup::{startup::UiAssets, loading::SpellAssets},
     util::text::break_text,
     Cleanup,
 };
@@ -181,7 +181,7 @@ fn on_character_hover(
     spell_assets: Res<SpellAssets>,
     ui_assets: Res<UiAssets>,
 ) {
-    for HoverEvent(entity, is_hovered) in ev_hover.iter() {
+    for HoverEvent(entity, is_hovered) in ev_hover.read() {
         if let Ok(spell) = q_spell.get(*entity) {
             if *is_hovered {
                 let tooltip = commands
@@ -209,7 +209,7 @@ fn on_character_drag(
     mut ev_drag: EventReader<DragEvent>,
     mut ev_tooltip: EventWriter<SetTooltipEvent>,
 ) {
-    for DragEvent(entity) in ev_drag.iter() {
+    for DragEvent(entity) in ev_drag.read() {
         ev_tooltip.send(SetTooltipEvent(*entity, None));
     }
 }

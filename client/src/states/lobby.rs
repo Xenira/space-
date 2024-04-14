@@ -68,7 +68,7 @@ fn ui_lobby(
 }
 
 fn on_network(mut commands: Commands, mut ev_networking: EventReader<NetworkingEvent>) {
-    for ev in ev_networking.iter() {
+    for ev in ev_networking.read() {
         match &ev.0 {
             Protocol::LobbyStatusResponse(lobby) => {
                 debug!("Got lobby info {:?}", lobby);

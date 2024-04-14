@@ -23,7 +23,7 @@ pub(crate) struct ComponentsPlugin;
 
 impl Plugin for ComponentsPlugin {
     fn build(&self, app: &mut App) {
-        app.configure_set(
+        app.configure_sets(
             PreUpdate,
             ChangeDetectionSystemSet::MouseDetection
                 .before(ChangeDetectionSystemSet::MouseDetectionFlush)

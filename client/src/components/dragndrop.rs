@@ -54,7 +54,7 @@ fn on_drag(
     mut ev_draged: EventWriter<DragEvent>,
     q_cursor: Query<(Entity, &GlobalTransform), With<Cursor>>,
 ) {
-    for ev in ev_clicked.iter() {
+    for ev in ev_clicked.read() {
         if let Ok((entity, mut transform, global_transform, parent)) = q_hovered.get_mut(ev.0) {
             debug!("Dragged: {:?}", entity);
             let (cursor, cursor_transform) = q_cursor.single();
@@ -86,7 +86,7 @@ fn on_drop(
     q_drop_target: Query<(Entity, &GlobalTransform), (With<DropTagret>, With<Hovered>)>,
     mut ev_droped: EventWriter<DropEvent>,
 ) {
-    for ev in ev_cursor_click.iter() {
+    for ev in ev_cursor_click.read() {
         if ev.button == MouseButton::Left && ev.state == ButtonState::Released {
             for (entity, dragged) in q_draged.iter() {
                 debug!("Droped: {:?}", entity);

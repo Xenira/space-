@@ -47,6 +47,7 @@ impl AnimationBuilder {
             VariableCurve {
                 keyframe_timestamps: timesteps,
                 keyframes,
+                interpolation: Interpolation::Linear,
             },
         );
 

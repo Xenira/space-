@@ -21,7 +21,8 @@ use protocol::{
 };
 use reqwest::Method;
 
-use super::startup::{CharacterAssets, UiAssets};
+use super::startup::startup::UiAssets;
+use super::startup::loading::{CharacterAssets };
 
 const STATE: AppState = AppState::GameShop;
 
@@ -123,7 +124,7 @@ pub struct CharacterCount(pub u8);
 fn setup(
     mut commands: Commands,
     mut networking: ResMut<NetworkingRessource>,
-    mut texture_atlases: ResMut<Assets<TextureAtlas>>,
+    mut texture_atlases: ResMut<Assets<TextureAtlasLayout>>,
     asset_server: Res<AssetServer>,
     res_anchor: Res<Anchors>,
 ) {
@@ -219,7 +220,7 @@ fn setup(
 
     // Lock Button
     let lock = asset_server.load("textures/ui/lock.png");
-    let lock_atlas = TextureAtlas::from_grid(lock, Vec2::new(32.0, 32.0), 2, 1, None, None);
+    let lock_atlas = TextureAtlasLayout::from_grid(Vec2::new(32.0, 32.0), 2, 1, None, None);
     let lock_atlas_handle = texture_atlases.add(lock_atlas);
 
     let lock_animation = animation::simple(0, 0)
@@ -245,8 +246,12 @@ fn setup(
 
     commands.spawn((
         SpriteSheetBundle {
-            texture_atlas: lock_atlas_handle,
-            sprite: TextureAtlasSprite::new(0),
+            sprite: Sprite::default(),
+            atlas: TextureAtlas {
+                layout: lock_atlas_handle,
+                index: 0,
+            },
+            texture: lock,
             transform: Transform::from_translation(Vec3::new(64.0 * -5.5, 200.0, 5.0)),
             ..Default::default()
         },
@@ -298,7 +303,7 @@ fn on_network(
     mut ev_game_users_change: EventWriter<GameUsersChangedEvent>,
     mut q_lock: Query<(Entity, &Animation), With<Lock>>,
 ) {
-    for ev in ev_networking.iter() {
+    for ev in ev_networking.read() {
         match &ev.0 {
             Protocol::GameShopResponse(user_info, locked, shop, spells) => {
                 debug!("GameShopResponse: {:?}", shop);
@@ -357,7 +362,7 @@ fn on_buy(
     q_spell: Query<&ShopSpell>,
     mut networking: ResMut<NetworkingRessource>,
 ) {
-    for ev in ev_droped.iter() {
+    for ev in ev_droped.read() {
         if let Ok(pedestal) = q_pedestal.get(ev.target) {
             if let Ok(shop_character) = q_shop_character.get(ev.entity) {
                 debug!("by character: {:?} {:?}", pedestal, shop_character);
@@ -392,7 +397,7 @@ fn on_reroll(
     q_reroll: Query<&Reroll>,
     mut networking: ResMut<NetworkingRessource>,
 ) {
-    for ev in ev_cklicked.iter() {
+    for ev in ev_cklicked.read() {
         if q_reroll.get(ev.0).is_ok() {
             networking.request(Method::POST, "games/shops");
         }
@@ -404,7 +409,7 @@ fn on_lock(
     q_lock: Query<&Lock>,
     mut networking: ResMut<NetworkingRessource>,
 ) {
-    for ev in ev_cklicked.iter() {
+    for ev in ev_cklicked.read() {
         if q_lock.get(ev.0).is_ok() {
             networking.request(Method::PATCH, "games/shops");
         }
@@ -417,7 +422,7 @@ fn on_sell(
     q_character: Query<&BoardCharacter>,
     mut networking: ResMut<NetworkingRessource>,
 ) {
-    for ev in ev_droped.iter() {
+    for ev in ev_droped.read() {
         if let Ok(character) = q_sell.get(ev.target).and(q_character.get(ev.entity)) {
             debug!("on_sell: {:?}", character);
             networking.request(
@@ -435,7 +440,7 @@ fn on_move(
     q_character: Query<&BoardCharacter>,
     mut networking: ResMut<NetworkingRessource>,
 ) {
-    for ev in ev_droped.iter() {
+    for ev in ev_droped.read() {
         if let Ok(pedestal) = q_pedestal.get(ev.target) {
             if let Ok(character) = q_character.get(ev.entity) {
                 debug!("on_move: {:?} {:?}", pedestal, character);
@@ -455,14 +460,14 @@ fn generate_shop(
     q_shop: Query<Entity, With<Shop>>,
     character_assets: Res<CharacterAssets>,
     ui_assets: Res<UiAssets>,
-    mut texture_atlases: ResMut<Assets<TextureAtlas>>,
+    mut texture_atlases: ResMut<Assets<TextureAtlasLayout>>,
     asset_server: Res<AssetServer>,
     res_board: Res<PlayerBoard>,
 ) {
-    for ev in ev_shop_change.iter() {
+    for ev in ev_shop_change.read() {
         let shop_frame = asset_server.load("textures/ui/user_frame.png");
         let shop_frame_atlas =
-            TextureAtlas::from_grid(shop_frame, Vec2::new(64.0, 64.0), 2, 1, None, None);
+            TextureAtlasLayout::from_grid(Vec2::new(64.0, 64.0), 2, 1, None, None);
         let shop_frame_atlas_handle = texture_atlases.add(shop_frame_atlas);
 
         let mut frame_animation = animation::simple(0, 0);
@@ -485,8 +490,12 @@ fn generate_shop(
                     parent
                         .spawn((
                             SpriteSheetBundle {
-                                texture_atlas: shop_frame_atlas_handle.clone(),
-                                sprite: TextureAtlasSprite::new(0),
+                                sprite: Sprite::default(),
+                                atlas: TextureAtlas {
+                                    layout: shop_frame_atlas_handle.clone(),
+                                    index: 0,
+                                },
+                                texture: shop_frame.clone(),
                                 transform: Transform::from_scale(Vec3::splat(2.0))
                                     .with_translation(Vec3::new(68.0 * 2.0 * i as f32, 0.0, 1.0)),
                                 ..Default::default()
@@ -536,8 +545,12 @@ fn generate_shop(
                     parent
                         .spawn((
                             SpriteSheetBundle {
-                                texture_atlas: shop_frame_atlas_handle.clone(),
-                                sprite: TextureAtlasSprite::new(0),
+                                sprite: Sprite::default(),
+                                atlas: TextureAtlas {
+                                    layout: shop_frame_atlas_handle.clone(),
+                                    index: 0,
+                                },
+                                texture: shop_frame.clone(),
                                 transform: Transform::from_scale(Vec3::splat(2.0))
                                     .with_translation(Vec3::new(
                                         68.0 * 2.0 * (i + ev.0.len()) as f32,
@@ -593,16 +606,16 @@ fn generate_board(
     mut ev_board_change: EventReader<BoardChangedEvent>,
     q_board_character: Query<(Entity, &BoardCharacter)>,
     q_pedestal: Query<(Entity, &Pedestal)>,
-    mut texture_atlases: ResMut<Assets<TextureAtlas>>,
+    mut texture_atlases: ResMut<Assets<TextureAtlasLayout>>,
     asset_server: Res<AssetServer>,
     mut res_board: ResMut<PlayerBoard>,
 ) {
-    for ev in ev_board_change.iter() {
+    for ev in ev_board_change.read() {
         res_board.0 = ev.0.clone();
 
         let shop_frame = asset_server.load("textures/ui/user_frame.png");
         let shop_frame_atlas =
-            TextureAtlas::from_grid(shop_frame, Vec2::new(64.0, 64.0), 2, 1, None, None);
+            TextureAtlasLayout::from_grid(Vec2::new(64.0, 64.0), 2, 1, None, None);
         let shop_frame_atlas_handle = texture_atlases.add(shop_frame_atlas);
 
         let mut frame_animation = animation::simple(0, 0);
@@ -630,8 +643,12 @@ fn generate_board(
                 commands.entity(entity).with_children(|parent| {
                     parent.spawn((
                         SpriteSheetBundle {
-                            texture_atlas: shop_frame_atlas_handle.clone(),
-                            sprite: TextureAtlasSprite::new(0),
+                            sprite: Sprite::default(),
+                            atlas: TextureAtlas {
+                                layout: shop_frame_atlas_handle.clone(),
+                                index: 0,
+                            },
+                            texture: shop_frame.clone(),
                             transform: Transform::from_scale(Vec3::splat(8.0)),
                             ..Default::default()
                         },
@@ -655,7 +672,7 @@ fn generate_game_users(
     mut ev_game_users: EventReader<GameUsersChangedEvent>,
     q_game_users: Query<(Option<&Children>, Entity), With<GameUsers>>,
 ) {
-    for ev in ev_game_users.iter() {
+    for ev in ev_game_users.read() {
         debug!("generate_game_users: {:?}", ev);
         for (children, entity) in q_game_users.iter() {
             if let Some(children) = children {

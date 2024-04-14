@@ -30,7 +30,8 @@ pub(crate) mod game_states {
                 .add(game_shop::GameShopPlugin)
                 .add(game_combat::GameCombatPlugin)
                 .add(game_result::GameResultPlugin)
-                .add(startup::StartupPlugin)
+                .add(startup::startup::StartupPlugin)
+                .add(startup::loading::LoadingPlugin)
         }
     }
 }

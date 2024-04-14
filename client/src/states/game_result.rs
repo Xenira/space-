@@ -32,7 +32,7 @@ pub struct GameResultRes(pub GameResult);
 fn setup(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
-    mut texture_atlases: ResMut<Assets<TextureAtlas>>,
+    mut texture_atlases: ResMut<Assets<TextureAtlasLayout>>,
     game_result: Res<GameResultRes>,
 ) {
     commands
@@ -69,7 +69,7 @@ fn setup(
             // Back button
             let button = asset_server.load("textures/ui/expanding_frame.png");
             let button_atlas =
-                TextureAtlas::from_grid(button, Vec2::new(64.0, 16.0), 20, 1, None, None);
+                TextureAtlasLayout::from_grid(Vec2::new(64.0, 16.0), 20, 1, None, None);
             let button_atlas_handle = texture_atlases.add(button_atlas);
 
             let mut button_animation = Animation::default()
@@ -93,7 +93,12 @@ fn setup(
             parent
                 .spawn((
                     SpriteSheetBundle {
-                        texture_atlas: button_atlas_handle,
+                        sprite: Sprite::default(),
+                        atlas: TextureAtlas {
+                            layout: button_atlas_handle,
+                            index: 0,
+                        },
+                        texture: button,
                         transform: Transform::from_translation(Vec3::new(0.0, -128.0, 0.0))
                             .with_scale(Vec3::splat(3.0)),
                         ..Default::default()
@@ -125,7 +130,7 @@ fn on_back_button_click(
     mut ev_state: EventWriter<StateChangeEvent>,
     mut ev_click: EventReader<ClickEvent>,
 ) {
-    for _ in ev_click.iter() {
+    for _ in ev_click.read() {
         ev_state.send(StateChangeEvent(AppState::MenuMain));
     }
 }

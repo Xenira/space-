@@ -93,7 +93,7 @@ fn on_login(
     mut ev_polling_status: EventWriter<PollingStatus>,
     mut ev_state_change: EventWriter<StateChangeEvent>,
 ) {
-    for ev in ev_networking.iter() {
+    for ev in ev_networking.read() {
         if let Protocol::LoginResponse(login) = &ev.0 {
             network.headers.insert(
                 "x-api-key",

@@ -72,7 +72,7 @@ fn check_hover(
     q_cursor: Query<&mut Transform, With<Cursor>>,
     mut ev_hover: EventWriter<HoverEvent>,
 ) {
-    if ev_cursor_move.iter().next().is_some() {
+    if ev_cursor_move.read().next().is_some() {
         if let Ok(world_position) = q_cursor
             .get_single()
             .map(|cursor| cursor.translation.truncate())
@@ -115,7 +115,7 @@ fn on_hover_removed(
     mut removed: RemovedComponents<Hovered>,
     query: Query<(Entity, &Hoverable, &Animation, Option<&AnimationTransition>), Without<Hovered>>,
 ) {
-    for removed in removed.iter() {
+    for removed in removed.read() {
         if let Ok((entity, hoverable, animation, existing_transition)) = query.get(removed) {
             if let Some(transition) = animation.get_transition(&hoverable.1) {
                 debug!(
@@ -138,7 +138,7 @@ fn on_click(
     q_hovered: Query<Entity, (With<Hovered>, With<Clickable>)>,
     mut ev_click: EventWriter<ClickEvent>,
 ) {
-    for cursor_event in ev_cursor_click.iter() {
+    for cursor_event in ev_cursor_click.read() {
         if cursor_event.button == MouseButton::Left && cursor_event.state.is_pressed() {
             for entity in q_hovered.iter() {
                 debug!("Clicked on entity: {:?}", entity);

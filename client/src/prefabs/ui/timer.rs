@@ -13,9 +13,9 @@ pub struct TimerBundle {
 }
 
 impl TimerBundle {
-    pub fn new(asset_server: &AssetServer, texture_atlases: &mut Assets<TextureAtlas>) -> Self {
+    pub fn new(asset_server: &AssetServer, texture_atlases: &mut Assets<TextureAtlasLayout>) -> Self {
         let frame = asset_server.load("textures/ui/timer_frame.png");
-        let frame_atlas = TextureAtlas::from_grid(frame, Vec2::new(128.0, 64.0), 25, 1, None, None);
+        let frame_atlas = TextureAtlasLayout::from_grid(Vec2::new(128.0, 64.0), 25, 1, None, None);
         let frame_atlas_handle = texture_atlases.add(frame_atlas);
 
         let init_state = AnimationState::new("init", AnimationIndices::new(0, 24))
@@ -33,8 +33,12 @@ impl TimerBundle {
             animation: frame_animation,
             animation_timer: AnimationTimer(Timer::from_seconds(0.05, TimerMode::Repeating)),
             sprite_sheet: SpriteSheetBundle {
-                texture_atlas: frame_atlas_handle,
-                sprite: TextureAtlasSprite::new(0),
+                sprite: Sprite::default(),
+                atlas: TextureAtlas {
+                    layout: frame_atlas_handle,
+                    index: 0,
+                },
+                texture: frame,
                 transform: Transform::from_scale(Vec3::splat(1.0)),
                 ..Default::default()
             },

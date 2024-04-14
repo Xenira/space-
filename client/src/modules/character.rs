@@ -4,7 +4,7 @@ use protocol::{characters::get_characters, protocol::CharacterInstance};
 use crate::{
     components::{
         animation::{
-            Animation, AnimationIndices, AnimationRepeatType, AnimationState, AnimationTimer,
+            AnimationIndices, AnimationRepeatType, AnimationState, AnimationTimer,
             AnimationTransition, AnimationTransitionType,
         },
         dragndrop::{DragEvent, Dragged},
@@ -14,7 +14,7 @@ use crate::{
     prefabs::animation,
     states::{
         game_shop::CharacterCount,
-        startup::{CharacterAssets, UiAssets},
+        startup::{loading::CharacterAssets, startup::UiAssets},
     },
     util::text::break_text,
     Cleanup,
@@ -123,8 +123,12 @@ fn spawn_character_portrait(
                     if character.upgraded {
                         parent.spawn((
                             SpriteSheetBundle {
-                                texture_atlas: character_assets.upgrded.clone(),
-                                sprite: TextureAtlasSprite::new(0),
+                                sprite: Sprite::default(),
+                                atlas: TextureAtlas {
+                                    layout: character_assets.upgraded_layout.clone(),
+                                    index: 0,
+                                },
+                                texture: character_assets.upgraded.clone(),
                                 transform: Transform::from_translation(Vec3::new(0.0, 0.0, 1.0))
                                     .with_scale(Vec3::splat(1.5)),
 
@@ -137,8 +141,12 @@ fn spawn_character_portrait(
                         if count.0 == 1 {
                             parent.spawn((
                                 SpriteSheetBundle {
-                                    texture_atlas: character_assets.duplicate.clone(),
-                                    sprite: TextureAtlasSprite::new(0),
+                                    sprite: Sprite::default(),
+                                    atlas: TextureAtlas {
+                                        layout: character_assets.duplicate_layout.clone(),
+                                        index: 0,
+                                    },
+                                    texture: character_assets.duplicate.clone(),
                                     transform: Transform::from_translation(Vec3::new(
                                         0.0, 0.0, 1.0,
                                     ))
@@ -151,8 +159,12 @@ fn spawn_character_portrait(
                         } else if count.0 > 1 {
                             parent.spawn((
                                 SpriteSheetBundle {
-                                    texture_atlas: character_assets.upgradable.clone(),
-                                    sprite: TextureAtlasSprite::new(0),
+                                    sprite: Sprite::default(),
+                                    atlas: TextureAtlas {
+                                        layout: character_assets.upgradable_layout.clone(),
+                                        index: 0,
+                                    },
+                                    texture: character_assets.upgradable.clone(),
                                     transform: Transform::from_translation(Vec3::new(
                                         0.0, 0.0, 1.0,
                                     ))
@@ -363,7 +375,7 @@ fn on_character_hover(
     character_assets: Res<CharacterAssets>,
     ui_assets: Res<UiAssets>,
 ) {
-    for HoverEvent(entity, is_hovered) in ev_hover.iter() {
+    for HoverEvent(entity, is_hovered) in ev_hover.read() {
         if let Ok((character, count)) = q_character.get(*entity).map(|(c, cnt)| (&c.0, cnt)) {
             if *is_hovered {
                 let tooltip = commands
@@ -398,7 +410,7 @@ fn on_character_drag(
     mut ev_drag: EventReader<DragEvent>,
     mut ev_tooltip: EventWriter<SetTooltipEvent>,
 ) {
-    for DragEvent(entity) in ev_drag.iter() {
+    for DragEvent(entity) in ev_drag.read() {
         ev_tooltip.send(SetTooltipEvent(*entity, None));
     }
 }

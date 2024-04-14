@@ -3,7 +3,7 @@ use crate::{
     cleanup_system,
     components::{
         anchors::{AnchorType, Anchors},
-        animation::{Animation, AnimationFinished, AnimationRepeatType, TransformAnimation},
+        animation::{Animation, AnimationRepeatType, TransformAnimation},
         hover::{BoundingBox, Hoverable},
     },
     modules::{character::Character, god::God},
@@ -18,7 +18,7 @@ pub(crate) struct GameCombatPlugin;
 
 impl Plugin for GameCombatPlugin {
     fn build(&self, app: &mut App) {
-        app.add_state::<GameCombatState>()
+        app.init_state::<GameCombatState>()
             .add_event::<BattleBoardChangedEvent>()
             .add_systems(OnEnter(STATE), setup)
             .add_systems(Update, generate_board.run_if(in_state(STATE)))
@@ -120,6 +120,8 @@ fn setup(
         state.0.start_own.clone(),
         state.0.start_opponent.clone(),
     ]));
+
+    info!("Combat set up");
 }
 
 fn play_next_animation(
@@ -139,6 +141,7 @@ fn play_next_animation(
     mut animation_timer: ResMut<AnimationTimer>,
 ) {
     let current_action = state.0.actions.first().cloned();
+    debug!("Playing next animation {:?}", current_action);
     if let Some(current_action) = current_action {
         if let Some((entity, character, children, source_global_transform, source_transform)) =
             q_board_character
@@ -243,7 +246,7 @@ fn generate_board(
     q_own: Query<Entity, With<BoardOwn>>,
     q_opponent: Query<Entity, With<BoardOpponent>>,
 ) {
-    for ev in ev_shop_change.iter() {
+    for ev in ev_shop_change.read() {
         debug!("Generating board");
 
         // Update existing characters

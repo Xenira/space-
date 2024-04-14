@@ -56,7 +56,7 @@ fn on_network(
     mut ev_networking: EventReader<NetworkingEvent>,
     mut ev_state_change: EventWriter<StateChangeEvent>,
 ) {
-    for ev in ev_networking.iter() {
+    for ev in ev_networking.read() {
         if let Protocol::DisplaynameResponse(_) = &ev.0 {
             ev_state_change.send(StateChangeEvent(AppState::MenuMain));
         }

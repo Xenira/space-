@@ -1,4 +1,4 @@
-use super::startup::GodAssets;
+use super::startup::loading::GodAssets;
 use crate::{
     cleanup_system,
     components::{
@@ -51,8 +51,12 @@ fn setup(
             parent
                 .spawn((
                     SpriteSheetBundle {
-                        texture_atlas: god_assets.god_frame.clone(),
-                        sprite: TextureAtlasSprite::new(0),
+                        sprite: Sprite::default(),
+                        atlas: TextureAtlas {
+                            layout: god_assets.god_frame_layout.clone(),
+                            index: 0,
+                        },
+                        texture: god_assets.god_frame.clone(),
                         transform: Transform::from_scale(Vec3::splat(4.0))
                             .with_translation(Vec3::new(0.0, 33.0 * 4.0, 1.0)),
                         ..Default::default()
@@ -84,8 +88,12 @@ fn setup(
             parent
                 .spawn((
                     SpriteSheetBundle {
-                        texture_atlas: god_assets.god_frame.clone(),
-                        sprite: TextureAtlasSprite::new(0),
+                        sprite: Sprite::default(),
+                        atlas: TextureAtlas {
+                            layout: god_assets.god_frame_layout.clone(),
+                            index: 0,
+                        },
+                        texture: god_assets.god_frame.clone(),
                         transform: Transform::from_scale(Vec3::splat(4.0))
                             .with_rotation(Quat::from_rotation_z(-90.0f32.to_radians()))
                             .with_translation(Vec3::new(33.0 * 4.0, 0.0, 1.0)),
@@ -119,8 +127,12 @@ fn setup(
             parent
                 .spawn((
                     SpriteSheetBundle {
-                        texture_atlas: god_assets.god_frame.clone(),
-                        sprite: TextureAtlasSprite::new(0),
+                        sprite: Sprite::default(),
+                        atlas: TextureAtlas {
+                            layout: god_assets.god_frame_layout.clone(),
+                            index: 0,
+                        },
+                        texture: god_assets.god_frame.clone(),
                         transform: Transform::from_scale(Vec3::splat(4.0))
                             .with_rotation(Quat::from_rotation_z(90.0f32.to_radians()))
                             .with_translation(Vec3::new(-33.0 * 4.0, 0.0, 1.0)),
@@ -154,8 +166,12 @@ fn setup(
             parent
                 .spawn((
                     SpriteSheetBundle {
-                        texture_atlas: god_assets.god_frame.clone(),
-                        sprite: TextureAtlasSprite::new(0),
+                        sprite: Sprite::default(),
+                        atlas: TextureAtlas {
+                            layout: god_assets.god_frame_layout.clone(),
+                            index: 0,
+                        },
+                        texture: god_assets.god_frame.clone(),
                         transform: Transform::from_scale(Vec3::splat(4.0))
                             .with_rotation(Quat::from_rotation_z(180.0f32.to_radians()))
                             .with_translation(Vec3::new(0.0, -33.0 * 4.0, 1.0)),
@@ -197,7 +213,7 @@ fn god_click(
     q_god: Query<(&GodComponent, &Transform), With<Clickable>>,
     mut network: ResMut<NetworkingRessource>,
 ) {
-    for ev in ev_clicked.iter() {
+    for ev in ev_clicked.read() {
         if let Ok((god, _)) = q_god.get(ev.0) {
             network.request(Method::PUT, format!("games/avatar/{}", god.0.id).as_str());
         }
@@ -209,7 +225,7 @@ fn on_network(
     mut ev_network: EventReader<NetworkingEvent>,
     q_god: Query<(Entity, &GodComponent, &Transform)>,
 ) {
-    for ev in ev_network.iter() {
+    for ev in ev_network.read() {
         if let Protocol::AvatarSelectResponse(god) = &ev.0 {
             for (entity, god_comp, transform) in q_god.iter() {
                 if god_comp.0.id == god.id {

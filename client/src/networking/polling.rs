@@ -3,7 +3,6 @@ use async_channel::Receiver;
 use bevy::prelude::*;
 use protocol::protocol::Protocol;
 use reqwest::Method;
-use serde::__private::de;
 
 use super::{
     networking_events::NetworkingEvent, networking_plugin::Runtime,
@@ -29,7 +28,7 @@ pub(crate) fn on_polling_status_change(
     query_poller: Query<Entity, With<PollingReceiver>>,
     runtime: Res<Runtime>,
 ) {
-    for ev in ev_polling_status.iter() {
+    for ev in ev_polling_status.read() {
         match ev {
             PollingStatus::Start => {
                 commands.spawn_empty().insert(PollingReceiver(get_task(

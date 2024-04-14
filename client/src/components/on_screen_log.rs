@@ -80,7 +80,7 @@ fn ui_log(mut contexts: EguiContexts, mut log_entries: ResMut<LogEntries>) {
 }
 
 fn add_log(mut log_entries: ResMut<LogEntries>, mut ev_log: EventReader<LogEntry>) {
-    for log_event in ev_log.iter() {
+    for log_event in ev_log.read() {
         log_entries.0.push(log_event.clone());
     }
 }

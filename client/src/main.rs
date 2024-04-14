@@ -11,10 +11,7 @@ use crate::{
 };
 use bevy::{
     diagnostic::EntityCountDiagnosticsPlugin,
-    hierarchy::DespawnRecursiveExt,
     log::{Level, LogPlugin},
-    math::Vec3,
-    pbr::PointLightBundle,
     prelude::*,
     window::Cursor,
 };
@@ -45,6 +42,7 @@ mod util;
 enum AppState {
     #[default]
     Startup,
+    Loading,
     MenuLogin,
     MenuSetDisplayName,
     MenuMain,
@@ -96,13 +94,12 @@ fn main() {
                 title: "<name>".to_string(),
                 resizable: true,
                 cursor,
-                fit_canvas_to_parent: true,
                 ..Default::default()
             }),
             ..Default::default()
         });
 
-    app.add_state::<AppState>()
+    app.init_state::<AppState>()
         .add_plugins(default_plugins) // .set(ImagePlugin::default_nearest()),
         // .add_plugin(FrameTimeDiagnosticsPlugin::default())
         .add_plugins(EntityCountDiagnosticsPlugin::default())
@@ -175,7 +172,7 @@ fn networking_handler(
     mut ev_state_change: EventWriter<StateChangeEvent>,
     mut ev_log: EventWriter<LogEntry>,
 ) {
-    for ev in ev_net.iter() {
+    for ev in ev_net.read() {
         debug!("[NET] {:?}", ev.0);
         ev_log.send(LogEntry {
             text: format!("[NET] {:?}", ev.0),
@@ -185,7 +182,7 @@ fn networking_handler(
 
         match &ev.0 {
             Protocol::LobbyLeaveResponse => {
-                ev_state_change.send(StateChangeEvent(AppState::MenuMain))
+                ev_state_change.send(StateChangeEvent(AppState::MenuMain));
             }
             Protocol::LobbyStatusResponse(lobby) => {
                 if let Some(timer) = lobby.start_at {
@@ -194,7 +191,7 @@ fn networking_handler(
                         TimerMode::Once,
                     ))));
                 }
-                ev_state_change.send(StateChangeEvent(AppState::Lobby))
+                ev_state_change.send(StateChangeEvent(AppState::Lobby));
             }
             Protocol::GameStartResponse(gods) => {
                 commands.insert_resource(TimerUi(Some(Timer::from_seconds(30.0, TimerMode::Once))));
@@ -213,10 +210,9 @@ fn networking_handler(
                     TimerMode::Once,
                 ))));
 
-                match update.turn {
-                    Turn::Combat(_, _) => (),
-                    Turn::Shop(_, _) => ev_state_change.send(StateChangeEvent(AppState::GameShop)),
-                }
+                if let Turn::Shop(_, _) = update.turn {
+                    ev_state_change.send(StateChangeEvent(AppState::GameShop));
+                };
             }
             Protocol::GameUserInfoResponse(user_info) => {
                 commands.insert_resource(GameUserRes(user_info.clone()));
@@ -228,11 +224,11 @@ fn networking_handler(
             Protocol::GameEndResponse(result) => {
                 commands.remove_resource::<GameUserRes>();
                 commands.insert_resource(GameResultRes(result.clone()));
-                ev_state_change.send(StateChangeEvent(AppState::GameResult))
+                ev_state_change.send(StateChangeEvent(AppState::GameResult));
             }
             Protocol::NetworkingError(e) => {
                 if e.status == 401 {
-                    ev_state_change.send(StateChangeEvent(AppState::MenuLogin))
+                    ev_state_change.send(StateChangeEvent(AppState::MenuLogin));
                 }
             }
             _ => {}
@@ -245,7 +241,7 @@ fn state_change_handler(
     mut app_state: ResMut<NextState<AppState>>,
     mut ev_state_change: EventReader<StateChangeEvent>,
 ) {
-    for ev in ev_state_change.iter() {
+    for ev in ev_state_change.read() {
         if *current_state.get() == ev.0 {
             warn!("State change {:?} is already active", ev);
             continue;

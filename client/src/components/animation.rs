@@ -210,7 +210,7 @@ fn animate_sprite(
         Entity,
         &mut Animation,
         &mut AnimationTimer,
-        &mut TextureAtlasSprite,
+        &mut TextureAtlas,
         Option<&AnimationTransition>,
     )>,
     mut ev_animation_finished: EventWriter<AnimationFinished>,
