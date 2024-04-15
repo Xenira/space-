@@ -1,3 +1,10 @@
 [[hooks]]
 stage = "post_build"
 command = "./process_assets.sh"
+
+[watch]
+watch = ["src/", "index.html", "build.rs"]
+
+[[proxy]]
+rewrite = "/api/v1/"
+backend = "http://localhost:8000/api/v1"

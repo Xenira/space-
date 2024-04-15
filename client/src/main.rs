@@ -10,6 +10,7 @@ use crate::{
     },
 };
 use bevy::{
+    asset::AssetMetaCheck,
     diagnostic::EntityCountDiagnosticsPlugin,
     log::{Level, LogPlugin},
     prelude::*,
@@ -100,6 +101,7 @@ fn main() {
         });
 
     app.init_state::<AppState>()
+        .insert_resource(AssetMetaCheck::Never)
         .add_plugins(default_plugins) // .set(ImagePlugin::default_nearest()),
         // .add_plugin(FrameTimeDiagnosticsPlugin::default())
         .add_plugins(EntityCountDiagnosticsPlugin::default())
