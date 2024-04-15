@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, render::view::visibility};
 use protocol::protocol::{GameOpponentInfo, GameUserInfo};
 
 use crate::{
@@ -8,6 +8,7 @@ use crate::{
     },
     modules::god::God,
     states::startup::startup::UiAssets,
+    AppState,
 };
 
 pub(crate) struct GameUserInfoPlugin;
@@ -25,7 +26,9 @@ impl Plugin for GameUserInfoPlugin {
         .add_systems(
             Update,
             on_user_info_removed.run_if(resource_removed::<GameUserRes>()),
-        );
+        )
+        .add_systems(OnEnter(AppState::GameShop), on_shop_enter)
+        .add_systems(OnExit(AppState::GameShop), on_shop_exit);
     }
 }
 
@@ -124,4 +127,16 @@ fn on_user_info_removed(
     for entity in q_info.iter() {
         commands.entity(entity).despawn_recursive();
     }
+}
+
+fn on_shop_enter(mut q_money: Query<&mut Visibility, With<UserMoney>>) {
+    let _ = q_money.get_single_mut().map(|mut visibility| {
+        *visibility = Visibility::Visible;
+    });
+}
+
+fn on_shop_exit(mut q_money: Query<&mut Visibility, With<UserMoney>>) {
+    let _ = q_money.get_single_mut().map(|mut visibility| {
+        *visibility = Visibility::Hidden;
+    });
 }

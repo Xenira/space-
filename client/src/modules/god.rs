@@ -2,7 +2,7 @@ use crate::{
     components::{hover::HoverEvent, tooltip::SetTooltipEvent, ChangeDetectionSystemSet},
     states::{
         game_commander_selection::GodComponent,
-        startup::{CharacterAssets, GodAssets, UiAssets},
+        startup::{loading::{CharacterAssets, GodAssets}, startup::UiAssets},
     },
     util::text::break_text,
     Cleanup,
@@ -71,8 +71,12 @@ fn spawn_god_portrait(
 
     parent
         .spawn((SpriteSheetBundle {
-            texture_atlas: god_assets.god_frame.clone(),
-            sprite: TextureAtlasSprite::new(if is_next_opponent { 17 } else { 0 }),
+            sprite: Sprite::default(),
+            atlas: TextureAtlas {
+                layout: god_assets.god_frame_layout.clone(),
+                index: if is_next_opponent { 17 } else { 0 },
+            },
+            texture: god_assets.god_frame.clone(),
             transform: Transform::from_scale(Vec3::splat(1.0))
                 .with_translation(Vec3::new(0.0, 0.0, 5.0)),
             ..Default::default()
@@ -231,7 +235,7 @@ fn on_god_hover(
     ui_assets: Res<UiAssets>,
     character_assets: Res<CharacterAssets>,
 ) {
-    for HoverEvent(entity, is_hovered) in ev_hover.iter() {
+    for HoverEvent(entity, is_hovered) in ev_hover.read() {
         if let Ok(god) = q_opponent.get_mut(*entity).map(|god| &god.0) {
             if *is_hovered {
                 let tooltip = commands
