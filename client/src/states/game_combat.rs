@@ -1,16 +1,22 @@
-use super::game_shop::BoardCharacter;
+use super::{game_shop::BoardCharacter, startup::loading::SoundEffectAssets};
 use crate::{
     cleanup_system,
     components::{
         anchors::{AnchorType, Anchors},
-        animation::{Animation, AnimationRepeatType, TransformAnimation},
+        animation::{
+            Animation, AnimationDirection, AnimationEvent, AnimationEventKind, AnimationRepeatType,
+            TransformAnimation,
+        },
         hover::{BoundingBox, Hoverable},
     },
     modules::{character::Character, god::God},
     AppState, Cleanup,
 };
-use bevy::prelude::*;
-use protocol::protocol::{BattleResponse, CharacterInstance};
+use bevy::{
+    audio::{PlaybackMode, Volume},
+    prelude::*,
+};
+use protocol::protocol::{BattleActionType, BattleResponse, CharacterInstance};
 
 const STATE: AppState = AppState::GameBattle;
 
@@ -34,7 +40,7 @@ impl Plugin for GameCombatPlugin {
             )
             .add_systems(
                 Update,
-                (animation_timer)
+                (animation_timer, attack_hit)
                     .run_if(in_state(GameCombatState::PlayAnimation))
                     .run_if(in_state(STATE)),
             )
@@ -166,7 +172,7 @@ fn play_next_animation(
                                 source: *source_transform,
                                 target: Transform::from_translation(target_transform)
                                     .with_scale(source_transform.scale),
-                                speed: 5.0,
+                                speed: 6.0,
                                 repeat: AnimationRepeatType::PingPongOnce,
                             });
                         } else {
@@ -176,7 +182,7 @@ fn play_next_animation(
                         warn!("No target found for {:?}", current_action);
                     }
 
-                    1.0
+                    1.5
                 }
                 protocol::protocol::BattleActionType::Die => {
                     debug!("Playing animation for {:?}", character);
@@ -220,6 +226,42 @@ fn animation_timer(
 
     if timer.0.finished() {
         next_state.set(GameCombatState::AnimationFinished);
+    }
+}
+
+fn attack_hit(
+    mut commands: Commands,
+    battle: Res<BattleRes>,
+    mut ev_animation: EventReader<AnimationEvent>,
+    q_board_character: Query<(&BoardCharacter, Entity)>,
+    res_sound_effects: Res<SoundEffectAssets>,
+) {
+    let action = battle.0.actions.first();
+    if let Some(action) = action {
+        if let BattleActionType::Attack = action.action {
+            for ev in ev_animation.read() {
+                if let AnimationEventKind::ChangeDirection(AnimationDirection::Backward) = ev.kind {
+                    debug!("Attack hit {:?}", action);
+                    let (_, entity) = q_board_character
+                        .iter()
+                        .find(|(c, _)| c.character.id == action.source)
+                        .unwrap();
+
+                    if entity != ev.entity {
+                        continue;
+                    }
+
+                    commands.spawn(AudioBundle {
+                        source: res_sound_effects.attack.clone(),
+                        settings: PlaybackSettings {
+                            mode: PlaybackMode::Despawn,
+                            volume: Volume::new(0.5),
+                            ..Default::default()
+                        },
+                    });
+                }
+            }
+        }
     }
 }
 

@@ -11,10 +11,12 @@ pub(crate) struct AnimationPlugin;
 
 impl Plugin for AnimationPlugin {
     fn build(&self, app: &mut App) {
-        app.add_event::<AnimationFinished>().add_systems(
-            Update,
-            (animate_sprite, animate_transform).in_set(ChangeDetectionSystemSet::Animation),
-        );
+        app.add_event::<AnimationFinished>()
+            .add_event::<AnimationEvent>()
+            .add_systems(
+                Update,
+                (animate_sprite, animate_transform).in_set(ChangeDetectionSystemSet::Animation),
+            );
     }
 }
 
@@ -203,6 +205,19 @@ pub struct AnimationTimer(pub Timer);
 #[derive(Debug, Clone, Event)]
 pub struct AnimationFinished(pub Entity);
 
+#[derive(Debug, Clone, Event)]
+pub struct AnimationEvent {
+    pub entity: Entity,
+    pub kind: AnimationEventKind,
+}
+
+#[derive(Debug, Clone)]
+pub enum AnimationEventKind {
+    Stop,
+    ChangeDirection(AnimationDirection),
+    Finish,
+}
+
 fn animate_sprite(
     mut commands: Commands,
     time: Res<Time>,
@@ -327,7 +342,7 @@ fn animate_transform(
     mut commands: Commands,
     time: Res<Time>,
     mut query: Query<(Entity, &mut Transform, &TransformAnimation)>,
-    mut ev_animation_finished: EventWriter<AnimationFinished>,
+    mut ev_animation: EventWriter<AnimationEvent>,
 ) {
     for (entity, mut transform, animation) in &mut query {
         let delta = time.delta_seconds() * animation.speed;
@@ -367,7 +382,10 @@ fn animate_transform(
                 }
                 AnimationRepeatType::Once => {
                     commands.entity(entity).remove::<TransformAnimation>();
-                    ev_animation_finished.send(AnimationFinished(entity));
+                    ev_animation.send(AnimationEvent {
+                        entity,
+                        kind: AnimationEventKind::Finish,
+                    });
                 }
                 AnimationRepeatType::PingPong => {
                     commands.entity(entity).insert(TransformAnimation {
@@ -383,6 +401,10 @@ fn animate_transform(
                         target: animation.source,
                         speed: animation.speed,
                         repeat: AnimationRepeatType::Once,
+                    });
+                    ev_animation.send(AnimationEvent {
+                        entity,
+                        kind: AnimationEventKind::ChangeDirection(AnimationDirection::Backward),
                     });
                 }
             }

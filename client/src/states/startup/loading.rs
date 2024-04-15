@@ -10,9 +10,16 @@ impl Plugin for LoadingPlugin {
         app.init_resource::<GodAssets>()
             .init_resource::<CharacterAssets>()
             .init_resource::<SpellAssets>()
+            .init_resource::<SoundEffectAssets>()
             .add_systems(
                 OnEnter(STATE),
-                (load_gods_assets, load_character_assets, load_spell_assets).before(setup),
+                (
+                    load_gods_assets,
+                    load_character_assets,
+                    load_spell_assets,
+                    load_sound_effects,
+                )
+                    .before(setup),
             )
             .add_systems(OnEnter(STATE), setup);
     }
@@ -45,6 +52,11 @@ pub struct CharacterAssets {
 pub struct SpellAssets {
     pub(crate) spell_portraits: HashMap<i32, Handle<Image>>,
     pub spell_frame: Handle<Image>,
+}
+
+#[derive(Resource, Default)]
+pub struct SoundEffectAssets {
+    pub(crate) attack: Handle<AudioSource>,
 }
 
 fn load_gods_assets(
@@ -106,6 +118,13 @@ fn load_spell_assets(asset_server: Res<AssetServer>, mut spell_assets: ResMut<Sp
     }
 
     spell_assets.spell_frame = asset_server.load("textures/ui/character_frame.png");
+}
+
+fn load_sound_effects(
+    asset_server: Res<AssetServer>,
+    mut sound_effects: ResMut<SoundEffectAssets>,
+) {
+    sound_effects.attack = asset_server.load("sound/hit01.ogg");
 }
 
 fn setup(mut ev_state_change: EventWriter<StateChangeEvent>) {

@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use protocol::protocol::{BattleResponse, GameOpponentInfo, Protocol, Turn};
+use protocol::protocol::{BattleActionType, BattleResponse, GameOpponentInfo, Protocol, Turn};
 use uuid::Uuid;
 
 use crate::{
@@ -140,7 +140,7 @@ impl GameInstance {
     // TODO: Move back to service
     async fn execute_combat(
         mut pairing: (&mut GameInstancePlayer, &mut GameInstancePlayer),
-    ) -> usize {
+    ) -> f64 {
         let user_b_id = pairing.1.user_id;
         let player_a_op_info = GameOpponentInfo {
             name: pairing.0.display_name.clone(),
@@ -169,7 +169,15 @@ impl GameInstance {
         let mut swapped_result = combat_result.swap_players();
         swapped_result.opponent = player_a_op_info;
 
-        let action_len = combat_result.actions.len();
+        let action_len = combat_result
+            .actions
+            .iter()
+            .map(|a| match a.action {
+                BattleActionType::Attack => 1.5,
+                BattleActionType::Die => 0.0,
+                BattleActionType::Ability => 0.0,
+            })
+            .sum();
 
         if pairing.0.placement.is_none() && pairing.0.user_id.is_some() {
             ActivePolls::notify(
