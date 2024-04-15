@@ -195,12 +195,7 @@ fn play_next_animation(
                             .insert(animation.get_transition("die").unwrap());
                     } else {
                         warn!("No animation found for {:?}", character);
-                        state.0.actions.remove(0);
-                        ev_board_change.send(BattleBoardChangedEvent([
-                            current_action.result_own.clone(),
-                            current_action.result_opponent.clone(),
-                        ]));
-                    }
+                                            }
                     0.0
                 }
                 _ => 0.0,
@@ -283,12 +278,12 @@ fn animation_finished(
 fn generate_board(
     mut commands: Commands,
     mut combat_state: ResMut<NextState<GameCombatState>>,
-    mut ev_shop_change: EventReader<BattleBoardChangedEvent>,
+    mut ev_board_change: EventReader<BattleBoardChangedEvent>,
     mut q_board_character: Query<(Entity, &mut BoardCharacter)>,
     q_own: Query<Entity, With<BoardOwn>>,
     q_opponent: Query<Entity, With<BoardOpponent>>,
 ) {
-    for ev in ev_shop_change.read() {
+    for ev in ev_board_change.read() {
         debug!("Generating board");
 
         // Update existing characters
